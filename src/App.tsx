@@ -13,6 +13,7 @@ import Placeholder from "./pages/Placeholder";
 import NotFound from "./pages/NotFound";
 import Applications from "./pages/Applications";
 import Accounting from "./pages/Accounting";
+import Analytics from "./pages/Analytics";
 
 const queryClient = new QueryClient();
 
@@ -44,7 +45,7 @@ const App = () => (
             />
             <Route
               path="/analytics"
-              element={<Placeholder title="Analytics & BI" description="Custom dashboards, reports, and AI insights" />}
+              element={<Analytics />}
             />
             <Route
               path="/ai-center"
