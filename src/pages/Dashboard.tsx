@@ -143,7 +143,7 @@ const Dashboard = () => {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, occupancy }) => `${name}: ${occupancy.toFixed(1)}%`}
+                    label={({ name, occupancy }: any) => `${name}: ${occupancy.toFixed(1)}%`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="occupancy"
