@@ -16,6 +16,7 @@ import Accounting from "./pages/Accounting";
 import Analytics from "./pages/Analytics";
 import AICenter from "./pages/AICenter";
 import Integrations from "./pages/Integrations";
+import Users from "./pages/Users";
 
 const queryClient = new QueryClient();
 
@@ -59,7 +60,7 @@ const App = () => (
             />
             <Route
               path="/users"
-              element={<Placeholder title="Users & Roles" description="User management and permissions" />}
+              element={<Users />}
             />
             <Route
               path="/settings"
