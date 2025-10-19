@@ -7,6 +7,7 @@ import AppLayout from "./components/layout/AppLayout";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import CRM from "./pages/CRM";
+import Marketing from "./pages/Marketing";
 import Maintenance from "./pages/Maintenance";
 import Placeholder from "./pages/Placeholder";
 import NotFound from "./pages/NotFound";
@@ -26,10 +27,7 @@ const App = () => (
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/crm" element={<CRM />} />
-            <Route
-              path="/marketing"
-              element={<Placeholder title="Marketing Automation" description="Campaign builder, drip sequences, and listing syndication" />}
-            />
+            <Route path="/marketing" element={<Marketing />} />
             <Route
               path="/applications"
               element={<Placeholder title="Online Leasing" description="Applications, eSignature, and automated document generation" />}
