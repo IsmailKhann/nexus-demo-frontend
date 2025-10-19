@@ -12,6 +12,7 @@ import Maintenance from "./pages/Maintenance";
 import Placeholder from "./pages/Placeholder";
 import NotFound from "./pages/NotFound";
 import Applications from "./pages/Applications";
+import Accounting from "./pages/Accounting";
 
 const queryClient = new QueryClient();
 
@@ -39,7 +40,7 @@ const App = () => (
             />
             <Route
               path="/accounting"
-              element={<Placeholder title="Accounting & Financials" description="GL, AR, payments, and QuickBooks integration" />}
+              element={<Accounting />}
             />
             <Route
               path="/analytics"
