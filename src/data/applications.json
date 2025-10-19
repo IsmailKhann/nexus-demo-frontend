@@ -1,0 +1,201 @@
+[
+  {
+    "id": "app-001",
+    "applicantName": "Sarah Johnson",
+    "email": "sarah.j@email.com",
+    "phone": "(555) 123-4567",
+    "propertyId": "prop-001",
+    "unitId": "unit-001",
+    "status": "pending_review",
+    "createdAt": "2025-01-15T10:30:00Z",
+    "submittedAt": "2025-01-15T14:20:00Z",
+    "monthlyIncome": 6500,
+    "creditScore": 720,
+    "employmentStatus": "full_time",
+    "pets": true,
+    "coApplicants": [
+      {
+        "name": "Michael Johnson",
+        "relationship": "spouse",
+        "income": 5800
+      }
+    ],
+    "documents": [
+      {
+        "type": "id",
+        "name": "drivers_license.pdf",
+        "uploaded": true
+      },
+      {
+        "type": "income",
+        "name": "paystub_dec.pdf",
+        "uploaded": true
+      },
+      {
+        "type": "income",
+        "name": "paystub_nov.pdf",
+        "uploaded": true
+      }
+    ],
+    "screeningStatus": "clear",
+    "leaseStatus": "not_started"
+  },
+  {
+    "id": "app-002",
+    "applicantName": "David Chen",
+    "email": "d.chen@email.com",
+    "phone": "(555) 234-5678",
+    "propertyId": "prop-002",
+    "unitId": "unit-005",
+    "status": "approved",
+    "createdAt": "2025-01-14T09:15:00Z",
+    "submittedAt": "2025-01-14T16:45:00Z",
+    "approvedAt": "2025-01-16T11:20:00Z",
+    "monthlyIncome": 8200,
+    "creditScore": 780,
+    "employmentStatus": "full_time",
+    "pets": false,
+    "coApplicants": [],
+    "documents": [
+      {
+        "type": "id",
+        "name": "passport.pdf",
+        "uploaded": true
+      },
+      {
+        "type": "income",
+        "name": "employment_letter.pdf",
+        "uploaded": true
+      }
+    ],
+    "screeningStatus": "clear",
+    "leaseStatus": "ready_to_sign"
+  },
+  {
+    "id": "app-003",
+    "applicantName": "Emily Rodriguez",
+    "email": "emily.r@email.com",
+    "phone": "(555) 345-6789",
+    "propertyId": "prop-001",
+    "unitId": "unit-003",
+    "status": "draft",
+    "createdAt": "2025-01-17T13:00:00Z",
+    "monthlyIncome": 5200,
+    "creditScore": null,
+    "employmentStatus": "full_time",
+    "pets": true,
+    "coApplicants": [],
+    "documents": [
+      {
+        "type": "id",
+        "name": "drivers_license.pdf",
+        "uploaded": true
+      },
+      {
+        "type": "income",
+        "name": "paystub.pdf",
+        "uploaded": false
+      }
+    ],
+    "screeningStatus": "not_started",
+    "leaseStatus": "not_started"
+  },
+  {
+    "id": "app-004",
+    "applicantName": "Marcus Thompson",
+    "email": "m.thompson@email.com",
+    "phone": "(555) 456-7890",
+    "propertyId": "prop-003",
+    "unitId": "unit-007",
+    "status": "screening",
+    "createdAt": "2025-01-16T08:30:00Z",
+    "submittedAt": "2025-01-16T12:10:00Z",
+    "monthlyIncome": 7100,
+    "creditScore": 680,
+    "employmentStatus": "self_employed",
+    "pets": false,
+    "coApplicants": [],
+    "documents": [
+      {
+        "type": "id",
+        "name": "drivers_license.pdf",
+        "uploaded": true
+      },
+      {
+        "type": "income",
+        "name": "tax_return_2024.pdf",
+        "uploaded": true
+      },
+      {
+        "type": "income",
+        "name": "bank_statement.pdf",
+        "uploaded": true
+      }
+    ],
+    "screeningStatus": "in_progress",
+    "leaseStatus": "not_started"
+  },
+  {
+    "id": "app-005",
+    "applicantName": "Jessica Martinez",
+    "email": "jess.m@email.com",
+    "phone": "(555) 567-8901",
+    "propertyId": "prop-002",
+    "unitId": "unit-006",
+    "status": "manual_review",
+    "createdAt": "2025-01-13T11:20:00Z",
+    "submittedAt": "2025-01-13T15:30:00Z",
+    "monthlyIncome": 4800,
+    "creditScore": 625,
+    "employmentStatus": "full_time",
+    "pets": true,
+    "coApplicants": [],
+    "documents": [
+      {
+        "type": "id",
+        "name": "drivers_license.pdf",
+        "uploaded": true
+      },
+      {
+        "type": "income",
+        "name": "paystub.pdf",
+        "uploaded": true
+      }
+    ],
+    "screeningStatus": "manual_review",
+    "screeningNotes": "Credit score below threshold but stable employment history",
+    "leaseStatus": "not_started"
+  },
+  {
+    "id": "app-006",
+    "applicantName": "Ryan O'Connor",
+    "email": "ryan.oc@email.com",
+    "phone": "(555) 678-9012",
+    "propertyId": "prop-001",
+    "unitId": "unit-002",
+    "status": "lease_signed",
+    "createdAt": "2025-01-10T09:00:00Z",
+    "submittedAt": "2025-01-10T14:20:00Z",
+    "approvedAt": "2025-01-12T10:15:00Z",
+    "leaseSigned": "2025-01-14T16:45:00Z",
+    "monthlyIncome": 9500,
+    "creditScore": 805,
+    "employmentStatus": "full_time",
+    "pets": false,
+    "coApplicants": [],
+    "documents": [
+      {
+        "type": "id",
+        "name": "drivers_license.pdf",
+        "uploaded": true
+      },
+      {
+        "type": "income",
+        "name": "employment_verification.pdf",
+        "uploaded": true
+      }
+    ],
+    "screeningStatus": "clear",
+    "leaseStatus": "signed"
+  }
+]

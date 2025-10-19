@@ -11,6 +11,7 @@ import Marketing from "./pages/Marketing";
 import Maintenance from "./pages/Maintenance";
 import Placeholder from "./pages/Placeholder";
 import NotFound from "./pages/NotFound";
+import Applications from "./pages/Applications";
 
 const queryClient = new QueryClient();
 
@@ -30,7 +31,7 @@ const App = () => (
             <Route path="/marketing" element={<Marketing />} />
             <Route
               path="/applications"
-              element={<Placeholder title="Online Leasing" description="Applications, eSignature, and automated document generation" />}
+              element={<Applications />}
             />
             <Route
               path="/maintenance"
