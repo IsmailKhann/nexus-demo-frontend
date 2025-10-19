@@ -17,6 +17,7 @@ import Analytics from "./pages/Analytics";
 import AICenter from "./pages/AICenter";
 import Integrations from "./pages/Integrations";
 import Users from "./pages/Users";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -64,7 +65,7 @@ const App = () => (
             />
             <Route
               path="/settings"
-              element={<Placeholder title="Settings" description="Platform configuration" />}
+              element={<Settings />}
             />
           </Route>
 
