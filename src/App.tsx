@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound";
 import Applications from "./pages/Applications";
 import Accounting from "./pages/Accounting";
 import Analytics from "./pages/Analytics";
+import AICenter from "./pages/AICenter";
 
 const queryClient = new QueryClient();
 
@@ -49,7 +50,7 @@ const App = () => (
             />
             <Route
               path="/ai-center"
-              element={<Placeholder title="AI Center" description="ALIA assistant, call scoring, and AI-powered features" />}
+              element={<AICenter />}
             />
             <Route
               path="/integrations"
