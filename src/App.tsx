@@ -15,6 +15,7 @@ import Applications from "./pages/Applications";
 import Accounting from "./pages/Accounting";
 import Analytics from "./pages/Analytics";
 import AICenter from "./pages/AICenter";
+import Integrations from "./pages/Integrations";
 
 const queryClient = new QueryClient();
 
@@ -54,7 +55,7 @@ const App = () => (
             />
             <Route
               path="/integrations"
-              element={<Placeholder title="Integrations" description="Marketplace and API connectivity" />}
+              element={<Integrations />}
             />
             <Route
               path="/users"
