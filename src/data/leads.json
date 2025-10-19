@@ -1,0 +1,235 @@
+[
+  {
+    "id": "lead-1",
+    "name": "Sarah Johnson",
+    "email": "sarah.j@email.com",
+    "phone": "+1-555-0101",
+    "source": "website",
+    "language": "English",
+    "createdAt": "2025-01-15T10:30:00Z",
+    "propertyIds": ["prop-1", "prop-2"],
+    "status": "tour_scheduled",
+    "assignedAgentId": "agent-1",
+    "leadScore": 85,
+    "sentiment": "positive",
+    "timeline": [
+      {
+        "id": "evt-1",
+        "type": "email",
+        "timestamp": "2025-01-15T10:30:00Z",
+        "content": "Initial inquiry about 2BR units",
+        "agentId": "agent-1"
+      },
+      {
+        "id": "evt-2",
+        "type": "call",
+        "timestamp": "2025-01-15T14:00:00Z",
+        "content": "Discussed amenities and pricing. Very interested in pet-friendly options.",
+        "agentId": "agent-1"
+      },
+      {
+        "id": "evt-3",
+        "type": "tour",
+        "timestamp": "2025-01-17T11:00:00Z",
+        "content": "Tour scheduled for Sunset Towers",
+        "agentId": "agent-1"
+      }
+    ]
+  },
+  {
+    "id": "lead-2",
+    "name": "Michael Chen",
+    "email": "mchen@email.com",
+    "phone": "+1-555-0102",
+    "source": "ils",
+    "language": "English",
+    "createdAt": "2025-01-14T09:15:00Z",
+    "propertyIds": ["prop-3"],
+    "status": "contacted",
+    "assignedAgentId": "agent-2",
+    "leadScore": 72,
+    "sentiment": "neutral",
+    "timeline": [
+      {
+        "id": "evt-4",
+        "type": "view",
+        "timestamp": "2025-01-14T09:15:00Z",
+        "content": "Viewed listing on Apartments.com"
+      },
+      {
+        "id": "evt-5",
+        "type": "sms",
+        "timestamp": "2025-01-14T10:00:00Z",
+        "content": "Sent follow-up SMS with availability info",
+        "agentId": "agent-2"
+      }
+    ]
+  },
+  {
+    "id": "lead-3",
+    "name": "Emily Rodriguez",
+    "email": "emily.r@email.com",
+    "phone": "+1-555-0103",
+    "source": "phone",
+    "language": "Spanish",
+    "createdAt": "2025-01-16T14:45:00Z",
+    "propertyIds": ["prop-2"],
+    "status": "new",
+    "leadScore": 68,
+    "sentiment": "positive",
+    "timeline": [
+      {
+        "id": "evt-6",
+        "type": "call",
+        "timestamp": "2025-01-16T14:45:00Z",
+        "content": "Inbound call inquiring about Harbor View Apartments. Looking for 1BR, move-in 60 days."
+      }
+    ]
+  },
+  {
+    "id": "lead-4",
+    "name": "James Williams",
+    "email": "jwilliams@email.com",
+    "phone": "+1-555-0104",
+    "source": "website",
+    "language": "English",
+    "createdAt": "2025-01-13T16:20:00Z",
+    "propertyIds": ["prop-4"],
+    "status": "applied",
+    "assignedAgentId": "agent-3",
+    "leadScore": 91,
+    "sentiment": "positive",
+    "timeline": [
+      {
+        "id": "evt-7",
+        "type": "email",
+        "timestamp": "2025-01-13T16:20:00Z",
+        "content": "Initial inquiry",
+        "agentId": "agent-3"
+      },
+      {
+        "id": "evt-8",
+        "type": "tour",
+        "timestamp": "2025-01-14T15:00:00Z",
+        "content": "Completed tour of unit 305",
+        "agentId": "agent-3"
+      },
+      {
+        "id": "evt-9",
+        "type": "application",
+        "timestamp": "2025-01-15T09:30:00Z",
+        "content": "Application submitted for unit 305",
+        "agentId": "agent-3"
+      }
+    ]
+  },
+  {
+    "id": "lead-5",
+    "name": "Amanda Taylor",
+    "email": "ataylor@email.com",
+    "phone": "+1-555-0105",
+    "source": "referral",
+    "language": "English",
+    "createdAt": "2025-01-17T11:00:00Z",
+    "propertyIds": ["prop-1", "prop-5"],
+    "status": "contacted",
+    "assignedAgentId": "agent-1",
+    "leadScore": 78,
+    "sentiment": "positive",
+    "timeline": [
+      {
+        "id": "evt-10",
+        "type": "email",
+        "timestamp": "2025-01-17T11:00:00Z",
+        "content": "Referred by current tenant. Interested in 2BR with parking.",
+        "agentId": "agent-1"
+      }
+    ]
+  },
+  {
+    "id": "lead-6",
+    "name": "David Martinez",
+    "email": "dmartinez@email.com",
+    "phone": "+1-555-0106",
+    "source": "sms",
+    "language": "English",
+    "createdAt": "2025-01-16T08:30:00Z",
+    "propertyIds": ["prop-3"],
+    "status": "tour_scheduled",
+    "assignedAgentId": "agent-2",
+    "leadScore": 82,
+    "sentiment": "positive",
+    "timeline": [
+      {
+        "id": "evt-11",
+        "type": "sms",
+        "timestamp": "2025-01-16T08:30:00Z",
+        "content": "SMS inquiry about downtown location"
+      },
+      {
+        "id": "evt-12",
+        "type": "call",
+        "timestamp": "2025-01-16T10:15:00Z",
+        "content": "Follow-up call. Discussed amenities and lease terms.",
+        "agentId": "agent-2"
+      },
+      {
+        "id": "evt-13",
+        "type": "tour",
+        "timestamp": "2025-01-18T14:00:00Z",
+        "content": "Tour scheduled",
+        "agentId": "agent-2"
+      }
+    ]
+  },
+  {
+    "id": "lead-7",
+    "name": "Lisa Anderson",
+    "email": "landerson@email.com",
+    "phone": "+1-555-0107",
+    "source": "ils",
+    "language": "English",
+    "createdAt": "2025-01-15T13:45:00Z",
+    "propertyIds": ["prop-5"],
+    "status": "contacted",
+    "assignedAgentId": "agent-2",
+    "leadScore": 75,
+    "sentiment": "neutral",
+    "timeline": [
+      {
+        "id": "evt-14",
+        "type": "view",
+        "timestamp": "2025-01-15T13:45:00Z",
+        "content": "Viewed listing on Zillow"
+      },
+      {
+        "id": "evt-15",
+        "type": "email",
+        "timestamp": "2025-01-15T16:00:00Z",
+        "content": "Sent property details and availability",
+        "agentId": "agent-2"
+      }
+    ]
+  },
+  {
+    "id": "lead-8",
+    "name": "Robert Thompson",
+    "email": "rthompson@email.com",
+    "phone": "+1-555-0108",
+    "source": "website",
+    "language": "English",
+    "createdAt": "2025-01-17T09:00:00Z",
+    "propertyIds": ["prop-2"],
+    "status": "new",
+    "leadScore": 65,
+    "sentiment": "neutral",
+    "timeline": [
+      {
+        "id": "evt-16",
+        "type": "email",
+        "timestamp": "2025-01-17T09:00:00Z",
+        "content": "General inquiry. Asking about application process."
+      }
+    ]
+  }
+]

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "prop-1",
+    "name": "Sunset Towers",
+    "address": "1234 Ocean Drive",
+    "city": "Miami",
+    "state": "FL",
+    "zip": "33139",
+    "units": 48,
+    "occupancyRate": 94.5,
+    "managerId": "agent-1",
+    "images": ["https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800"]
+  },
+  {
+    "id": "prop-2",
+    "name": "Harbor View Apartments",
+    "address": "5678 Marina Boulevard",
+    "city": "San Diego",
+    "state": "CA",
+    "zip": "92101",
+    "units": 72,
+    "occupancyRate": 97.2,
+    "managerId": "agent-2",
+    "images": ["https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800"]
+  },
+  {
+    "id": "prop-3",
+    "name": "Downtown Lofts",
+    "address": "910 Broadway Street",
+    "city": "Austin",
+    "state": "TX",
+    "zip": "78701",
+    "units": 36,
+    "occupancyRate": 88.9,
+    "managerId": "agent-1",
+    "images": ["https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800"]
+  },
+  {
+    "id": "prop-4",
+    "name": "Riverside Commons",
+    "address": "2345 River Road",
+    "city": "Portland",
+    "state": "OR",
+    "zip": "97201",
+    "units": 60,
+    "occupancyRate": 91.7,
+    "managerId": "agent-3",
+    "images": ["https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800"]
+  },
+  {
+    "id": "prop-5",
+    "name": "Mountain View Estates",
+    "address": "789 Highland Avenue",
+    "city": "Denver",
+    "state": "CO",
+    "zip": "80202",
+    "units": 54,
+    "occupancyRate": 95.4,
+    "managerId": "agent-2",
+    "images": ["https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800"]
+  }
+]
