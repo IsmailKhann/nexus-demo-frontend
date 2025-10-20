@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -21,17 +23,19 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { fetchLeads, updateLeadStatus } from '@/lib/mockApi';
 import type { Lead } from '@/types';
-import { Search, Filter, Phone, Mail, MessageSquare, Calendar, User, TrendingUp } from 'lucide-react';
+import { Search, Phone, Mail, MessageSquare, Calendar, User, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const statusColors: Record<Lead['status'], string> = {
-  new: 'bg-blue-500',
-  contacted: 'bg-yellow-500',
-  tour_scheduled: 'bg-purple-500',
-  applied: 'bg-indigo-500',
-  leased: 'bg-green-500',
-  lost: 'bg-gray-500',
+const statusConfig: Record<Lead['status'], { label: string; color: string }> = {
+  new: { label: 'New', color: 'bg-blue-500' },
+  contacted: { label: 'Contacted', color: 'bg-yellow-500' },
+  tour_scheduled: { label: 'Tour Scheduled', color: 'bg-purple-500' },
+  applied: { label: 'Applied', color: 'bg-indigo-500' },
+  leased: { label: 'Leased', color: 'bg-green-500' },
+  lost: { label: 'Lost', color: 'bg-gray-500' },
 };
+
+const statusOrder: Lead['status'][] = ['new', 'contacted', 'tour_scheduled', 'applied', 'leased', 'lost'];
 
 const sourceIcons: Record<Lead['source'], typeof Phone> = {
   phone: Phone,
@@ -48,7 +52,6 @@ const CRM = () => {
   const [filteredLeads, setFilteredLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const { toast } = useToast();
@@ -59,7 +62,7 @@ const CRM = () => {
 
   useEffect(() => {
     filterLeads();
-  }, [searchQuery, statusFilter, leads]);
+  }, [searchQuery, leads]);
 
   const loadLeads = async () => {
     try {
@@ -87,11 +90,21 @@ const CRM = () => {
       );
     }
 
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((lead) => lead.status === statusFilter);
-    }
-
     setFilteredLeads(filtered);
+  };
+
+  const onDragEnd = (result: DropResult) => {
+    const { destination, source, draggableId } = result;
+
+    if (!destination) return;
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+
+    const newStatus = destination.droppableId as Lead['status'];
+    handleStatusChange(draggableId, newStatus);
+  };
+
+  const getLeadsByStatus = (status: Lead['status']) => {
+    return filteredLeads.filter((lead) => lead.status === status);
   };
 
   const handleStatusChange = async (leadId: string, newStatus: Lead['status']) => {
@@ -174,101 +187,120 @@ const CRM = () => {
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Search */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search leads by name or email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="new">New</SelectItem>
-                <SelectItem value="contacted">Contacted</SelectItem>
-                <SelectItem value="tour_scheduled">Tour Scheduled</SelectItem>
-                <SelectItem value="applied">Applied</SelectItem>
-                <SelectItem value="leased">Leased</SelectItem>
-                <SelectItem value="lost">Lost</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search leads by name or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
           </div>
         </CardContent>
       </Card>
 
-      {/* Leads List */}
-      <div className="space-y-3">
-        {isLoading ? (
-          <Card>
-            <CardContent className="p-6">Loading leads...</CardContent>
-          </Card>
-        ) : filteredLeads.length === 0 ? (
-          <Card>
-            <CardContent className="p-6 text-center text-muted-foreground">
-              No leads found matching your criteria
-            </CardContent>
-          </Card>
-        ) : (
-          filteredLeads.map((lead) => (
-            <Card
-              key={lead.id}
-              className="hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => openLeadDetail(lead)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${lead.email}`} />
-                    <AvatarFallback>{lead.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold truncate">{lead.name}</h3>
-                      <Badge
-                        variant="secondary"
-                        className={`${statusColors[lead.status]} text-white`}
-                      >
-                        {lead.status.replace('_', ' ')}
-                      </Badge>
-                      {lead.sentiment && (
-                        <Badge variant="outline" className="capitalize">
-                          {lead.sentiment}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        {getSourceIcon(lead.source)}
-                        {lead.source}
-                      </span>
-                      <span>{lead.email}</span>
-                      <span>{lead.phone}</span>
-                    </div>
-                  </div>
+      {/* Kanban Board */}
+      {isLoading ? (
+        <Card>
+          <CardContent className="p-6">Loading leads...</CardContent>
+        </Card>
+      ) : (
+        <DragDropContext onDragEnd={onDragEnd}>
+          <div className="flex gap-4 overflow-x-auto pb-4">
+            {statusOrder.map((status) => {
+              const statusLeads = getLeadsByStatus(status);
+              const config = statusConfig[status];
 
-                  <div className="text-right">
-                    <div className="text-sm font-medium mb-1">Score: {lead.leadScore}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatDate(lead.createdAt)}
-                    </div>
-                  </div>
+              return (
+                <div key={status} className="flex-shrink-0 w-80">
+                  <Card className="h-full">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base font-semibold flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${config.color}`} />
+                          {config.label}
+                        </CardTitle>
+                        <Badge variant="secondary">{statusLeads.length}</Badge>
+                      </div>
+                    </CardHeader>
+                    
+                    <Droppable droppableId={status}>
+                      {(provided, snapshot) => (
+                        <CardContent
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className={`space-y-3 min-h-[600px] ${
+                            snapshot.isDraggingOver ? 'bg-accent/50' : ''
+                          }`}
+                        >
+                          <ScrollArea className="h-[calc(100vh-320px)]">
+                            <div className="space-y-3 pr-4">
+                              {statusLeads.map((lead, index) => (
+                                <Draggable key={lead.id} draggableId={lead.id} index={index}>
+                                  {(provided, snapshot) => (
+                                    <Card
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      {...provided.dragHandleProps}
+                                      className={`cursor-pointer hover:shadow-md transition-shadow ${
+                                        snapshot.isDragging ? 'shadow-lg ring-2 ring-primary' : ''
+                                      }`}
+                                      onClick={() => openLeadDetail(lead)}
+                                    >
+                                      <CardContent className="p-4">
+                                        <div className="space-y-3">
+                                          <div className="flex items-start gap-3">
+                                            <Avatar className="h-10 w-10">
+                                              <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${lead.email}`} />
+                                              <AvatarFallback>{lead.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex-1 min-w-0">
+                                              <h4 className="font-semibold text-sm truncate">{lead.name}</h4>
+                                              <p className="text-xs text-muted-foreground truncate">{lead.email}</p>
+                                            </div>
+                                          </div>
+
+                                          <div className="flex items-center justify-between text-xs">
+                                            <div className="flex items-center gap-1 text-muted-foreground">
+                                              {getSourceIcon(lead.source)}
+                                              <span className="capitalize">{lead.source}</span>
+                                            </div>
+                                            <Badge variant="outline" className="text-xs">
+                                              Score: {lead.leadScore}
+                                            </Badge>
+                                          </div>
+
+                                          {lead.sentiment && (
+                                            <Badge variant="outline" className="text-xs capitalize w-fit">
+                                              {lead.sentiment}
+                                            </Badge>
+                                          )}
+
+                                          <div className="text-xs text-muted-foreground">
+                                            {formatDate(lead.createdAt)}
+                                          </div>
+                                        </div>
+                                      </CardContent>
+                                    </Card>
+                                  )}
+                                </Draggable>
+                              ))}
+                              {provided.placeholder}
+                            </div>
+                          </ScrollArea>
+                        </CardContent>
+                      )}
+                    </Droppable>
+                  </Card>
                 </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
+              );
+            })}
+          </div>
+        </DragDropContext>
+      )}
 
       {/* Lead Detail Sheet */}
       <Sheet open={isDetailOpen} onOpenChange={setIsDetailOpen}>
@@ -365,8 +397,8 @@ const CRM = () => {
                     <CardContent className="space-y-2">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Status:</span>
-                        <Badge className={`${statusColors[selectedLead.status]} text-white capitalize`}>
-                          {selectedLead.status.replace('_', ' ')}
+                        <Badge className={`${statusConfig[selectedLead.status].color} text-white`}>
+                          {statusConfig[selectedLead.status].label}
                         </Badge>
                       </div>
                       <div className="flex justify-between">
