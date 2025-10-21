@@ -42,41 +42,147 @@ const Analytics = () => {
   const [timeRange, setTimeRange] = useState('month');
   const [selectedDashboard, setSelectedDashboard] = useState('executive');
 
-  // Mock data for KPIs
-  const kpis = [
-    {
-      title: 'Total Revenue',
-      value: '$2,847,392',
-      change: '+12.5%',
-      trend: 'up',
-      icon: DollarSign,
-      color: 'text-green-500'
-    },
-    {
-      title: 'Occupancy Rate',
-      value: '94.2%',
-      change: '+2.3%',
-      trend: 'up',
-      icon: Home,
-      color: 'text-blue-500'
-    },
-    {
-      title: 'Active Leads',
-      value: '847',
-      change: '+18.7%',
-      trend: 'up',
-      icon: Users,
-      color: 'text-purple-500'
-    },
-    {
-      title: 'Avg. Lease Term',
-      value: '14.2 mo',
-      change: '-0.8%',
-      trend: 'down',
-      icon: Calendar,
-      color: 'text-orange-500'
-    }
-  ];
+  // Dashboard-specific KPIs
+  const dashboardKPIs = {
+    executive: [
+      {
+        title: 'Total Revenue',
+        value: '$2,847,392',
+        change: '+12.5%',
+        trend: 'up',
+        icon: DollarSign,
+        color: 'text-green-500'
+      },
+      {
+        title: 'Occupancy Rate',
+        value: '94.2%',
+        change: '+2.3%',
+        trend: 'up',
+        icon: Home,
+        color: 'text-blue-500'
+      },
+      {
+        title: 'Active Leads',
+        value: '847',
+        change: '+18.7%',
+        trend: 'up',
+        icon: Users,
+        color: 'text-purple-500'
+      },
+      {
+        title: 'Net Operating Income',
+        value: '$1,124,500',
+        change: '+8.2%',
+        trend: 'up',
+        icon: TrendingUp,
+        color: 'text-orange-500'
+      }
+    ],
+    operations: [
+      {
+        title: 'Open Work Orders',
+        value: '23',
+        change: '-12%',
+        trend: 'up',
+        icon: Home,
+        color: 'text-blue-500'
+      },
+      {
+        title: 'Avg. Response Time',
+        value: '2.4 hrs',
+        change: '-18%',
+        trend: 'up',
+        icon: Calendar,
+        color: 'text-green-500'
+      },
+      {
+        title: 'Maintenance Costs',
+        value: '$48,392',
+        change: '+5.2%',
+        trend: 'down',
+        icon: DollarSign,
+        color: 'text-red-500'
+      },
+      {
+        title: 'Tenant Satisfaction',
+        value: '4.7/5',
+        change: '+0.3',
+        trend: 'up',
+        icon: Users,
+        color: 'text-purple-500'
+      }
+    ],
+    financial: [
+      {
+        title: 'Total Revenue',
+        value: '$2,847,392',
+        change: '+12.5%',
+        trend: 'up',
+        icon: DollarSign,
+        color: 'text-green-500'
+      },
+      {
+        title: 'Operating Expenses',
+        value: '$1,098,234',
+        change: '+3.2%',
+        trend: 'down',
+        icon: TrendingUp,
+        color: 'text-red-500'
+      },
+      {
+        title: 'Cash Flow',
+        value: '$1,749,158',
+        change: '+18.9%',
+        trend: 'up',
+        icon: BarChart3,
+        color: 'text-blue-500'
+      },
+      {
+        title: 'Collections Rate',
+        value: '97.8%',
+        change: '+1.2%',
+        trend: 'up',
+        icon: Calendar,
+        color: 'text-purple-500'
+      }
+    ],
+    marketing: [
+      {
+        title: 'Active Leads',
+        value: '847',
+        change: '+18.7%',
+        trend: 'up',
+        icon: Users,
+        color: 'text-purple-500'
+      },
+      {
+        title: 'Conversion Rate',
+        value: '22.8%',
+        change: '+4.1%',
+        trend: 'up',
+        icon: TrendingUp,
+        color: 'text-green-500'
+      },
+      {
+        title: 'Marketing Spend',
+        value: '$24,850',
+        change: '-8.5%',
+        trend: 'up',
+        icon: DollarSign,
+        color: 'text-blue-500'
+      },
+      {
+        title: 'Cost Per Lease',
+        value: '$425',
+        change: '-12.3%',
+        trend: 'up',
+        icon: BarChart3,
+        color: 'text-orange-500'
+      }
+    ]
+  };
+
+  const kpis = dashboardKPIs[selectedDashboard as keyof typeof dashboardKPIs];
 
   // Mock revenue data
   const revenueData = [
