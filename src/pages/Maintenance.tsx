@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,11 +45,19 @@ const statusIcons: Record<WorkOrder['status'], typeof Clock> = {
   cancelled: XCircle,
 };
 
+const statusConfig = {
+  new: { label: 'New', icon: AlertCircle, color: 'bg-blue-500' },
+  assigned: { label: 'Assigned', icon: User, color: 'bg-purple-500' },
+  in_progress: { label: 'In Progress', icon: Clock, color: 'bg-orange-500' },
+  completed: { label: 'Completed', icon: CheckCircle, color: 'bg-green-500' },
+  cancelled: { label: 'Cancelled', icon: XCircle, color: 'bg-gray-500' },
+};
+
+const statusOrder: WorkOrder['status'][] = ['new', 'assigned', 'in_progress', 'completed'];
+
 const Maintenance = () => {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<WorkOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -58,15 +67,10 @@ const Maintenance = () => {
     loadWorkOrders();
   }, []);
 
-  useEffect(() => {
-    filterOrders();
-  }, [statusFilter, priorityFilter, workOrders]);
-
   const loadWorkOrders = async () => {
     try {
       const data = await fetchWorkOrders();
       setWorkOrders(data);
-      setFilteredOrders(data);
     } catch (error) {
       toast({
         title: 'Error',
@@ -78,18 +82,24 @@ const Maintenance = () => {
     }
   };
 
-  const filterOrders = () => {
-    let filtered = [...workOrders];
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((wo) => wo.status === statusFilter);
-    }
-
+  const getOrdersByStatus = (status: WorkOrder['status']) => {
+    let filtered = workOrders.filter(wo => wo.status === status);
+    
     if (priorityFilter !== 'all') {
-      filtered = filtered.filter((wo) => wo.priority === priorityFilter);
+      filtered = filtered.filter(wo => wo.priority === priorityFilter);
     }
+    
+    return filtered;
+  };
 
-    setFilteredOrders(filtered);
+  const onDragEnd = async (result: DropResult) => {
+    const { destination, source, draggableId } = result;
+
+    if (!destination) return;
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+
+    const newStatus = destination.droppableId as WorkOrder['status'];
+    await handleStatusChange(draggableId, newStatus);
   };
 
   const handleStatusChange = async (orderId: string, newStatus: WorkOrder['status']) => {
@@ -183,26 +193,13 @@ const Maintenance = () => {
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Filter */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="new">New</SelectItem>
-                <SelectItem value="assigned">Assigned</SelectItem>
-                <SelectItem value="in_progress">In Progress</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
-
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium">Filter by priority:</span>
             <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-full md:w-48">
+              <SelectTrigger className="w-48">
                 <SelectValue placeholder="Filter by priority" />
               </SelectTrigger>
               <SelectContent>
@@ -217,76 +214,105 @@ const Maintenance = () => {
         </CardContent>
       </Card>
 
-      {/* Work Orders Board */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {isLoading ? (
-          <Card>
-            <CardContent className="p-6">Loading work orders...</CardContent>
-          </Card>
-        ) : filteredOrders.length === 0 ? (
-          <Card className="col-span-full">
-            <CardContent className="p-6 text-center text-muted-foreground">
-              No work orders found matching your criteria
-            </CardContent>
-          </Card>
-        ) : (
-          filteredOrders.map((order) => (
-            <Card
-              key={order.id}
-              className="hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => openOrderDetail(order)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1">
-                    <CardTitle className="text-base line-clamp-2">{order.title}</CardTitle>
-                    <CardDescription className="mt-1">{order.category}</CardDescription>
-                  </div>
-                  <Badge
-                    variant="secondary"
-                    className={`${priorityColors[order.priority]} text-white flex-shrink-0`}
-                  >
-                    {order.priority}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  {order.description}
-                </p>
+      {/* Kanban Board */}
+      {isLoading ? (
+        <Card>
+          <CardContent className="p-6">Loading work orders...</CardContent>
+        </Card>
+      ) : (
+        <DragDropContext onDragEnd={onDragEnd}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {statusOrder.map((status) => {
+              const config = statusConfig[status];
+              const orders = getOrdersByStatus(status);
+              const Icon = config.icon;
 
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant="outline"
-                    className={`${statusColors[order.status]} text-white capitalize`}
-                  >
-                    {getStatusIcon(order.status)}
-                    <span className="ml-1">{order.status.replace('_', ' ')}</span>
-                  </Badge>
-                </div>
+              return (
+                <div key={status} className="flex flex-col min-h-[500px]">
+                  <Card className="mb-3">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`p-1.5 rounded ${config.color}`}>
+                            <Icon className="h-4 w-4 text-white" />
+                          </div>
+                          <CardTitle className="text-base">{config.label}</CardTitle>
+                        </div>
+                        <Badge variant="secondary">{orders.length}</Badge>
+                      </div>
+                    </CardHeader>
+                  </Card>
 
-                {order.estimatedCost && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Est:</span>
-                    <span className="font-medium">${order.estimatedCost}</span>
-                    {order.actualCost && (
-                      <>
-                        <span className="text-muted-foreground">Actual:</span>
-                        <span className="font-medium">${order.actualCost}</span>
-                      </>
+                  <Droppable droppableId={status}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={`flex-1 space-y-3 p-2 rounded-lg transition-colors ${
+                          snapshot.isDraggingOver ? 'bg-accent/50' : ''
+                        }`}
+                      >
+                        {orders.map((order, index) => (
+                          <Draggable key={order.id} draggableId={order.id} index={index}>
+                            {(provided, snapshot) => (
+                              <Card
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className={`cursor-pointer hover:shadow-md transition-shadow ${
+                                  snapshot.isDragging ? 'shadow-lg rotate-2' : ''
+                                }`}
+                                onClick={() => openOrderDetail(order)}
+                              >
+                                <CardHeader className="pb-3">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <CardTitle className="text-sm line-clamp-2 flex-1">
+                                      {order.title}
+                                    </CardTitle>
+                                    <Badge
+                                      variant="secondary"
+                                      className={`${priorityColors[order.priority]} text-white text-xs flex-shrink-0`}
+                                    >
+                                      {order.priority}
+                                    </Badge>
+                                  </div>
+                                  <CardDescription className="text-xs">{order.category}</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                  <p className="text-xs text-muted-foreground line-clamp-2">
+                                    {order.description}
+                                  </p>
+
+                                  {order.estimatedCost && (
+                                    <div className="flex items-center gap-1 text-xs">
+                                      <DollarSign className="h-3 w-3 text-muted-foreground" />
+                                      <span className="font-medium">${order.estimatedCost}</span>
+                                    </div>
+                                  )}
+
+                                  <div className="text-xs text-muted-foreground pt-2 border-t">
+                                    {formatDate(order.createdAt)}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                        {orders.length === 0 && (
+                          <div className="text-center text-sm text-muted-foreground py-8">
+                            No orders
+                          </div>
+                        )}
+                      </div>
                     )}
-                  </div>
-                )}
-
-                <div className="text-xs text-muted-foreground pt-2 border-t">
-                  Created: {formatDate(order.createdAt)}
+                  </Droppable>
                 </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
+              );
+            })}
+          </div>
+        </DragDropContext>
+      )}
 
       {/* Work Order Detail Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
@@ -308,10 +334,10 @@ const Maintenance = () => {
                 <div className="flex gap-2">
                   <Badge
                     variant="outline"
-                    className={`${statusColors[selectedOrder.status]} text-white capitalize`}
+                    className={`${statusConfig[selectedOrder.status].color} text-white capitalize`}
                   >
                     {getStatusIcon(selectedOrder.status)}
-                    <span className="ml-1">{selectedOrder.status.replace('_', ' ')}</span>
+                    <span className="ml-1">{statusConfig[selectedOrder.status].label}</span>
                   </Badge>
                   <Badge
                     variant="secondary"
