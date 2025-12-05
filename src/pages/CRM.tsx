@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -29,11 +30,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { 
-  Search, Phone, Mail, MessageSquare, Calendar, User, TrendingUp, 
-  LayoutGrid, List, Star, ArrowUpDown, ChevronRight, Users, Target
+  Search, Phone, Mail, MessageSquare, Calendar as CalendarIcon, User, TrendingUp, 
+  LayoutGrid, List, Star, ChevronRight, Users, Target, Eye, CheckCircle2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 // =============== HARDCODED DATA ===============
 const users = [
@@ -52,22 +61,30 @@ const properties = [
 ];
 
 const initialLeads = [
-  { id: "LEA_001", full_name: "John Smith", status: "Contacted", priority: "High", lead_score: 85, sentiment: "Positive", property_id: "PROP_001", assigned_to: "USR_001", rent_range: "$3k-$3.5k", move_in: "2026-01-15" },
-  { id: "LEA_002", full_name: "Emily Davis", status: "Tour Scheduled", priority: "High", lead_score: 92, sentiment: "High Intent", property_id: "PROP_002", assigned_to: "USR_002", rent_range: "$1.8k-$2.2k", move_in: "2026-02-01" },
-  { id: "LEA_003", full_name: "Robert Ford", status: "Lost", priority: "Low", lead_score: 20, sentiment: "Negative", property_id: "PROP_001", assigned_to: "USR_001", rent_range: "$4k-$5k", move_in: "2025-11-30" },
-  { id: "LEA_004", full_name: "Michael Chen", status: "Application Pending", priority: "High", lead_score: 95, sentiment: "Neutral", property_id: "PROP_003", assigned_to: "USR_005", rent_range: "$1.4k-$1.6k", move_in: "2025-12-20" },
-  { id: "LEA_006", full_name: "Bruce Wayne", status: "Leased", priority: "High", lead_score: 99, sentiment: "Positive", property_id: "PROP_005", assigned_to: "USR_003", rent_range: "$12k-$15k", move_in: "2025-12-15" },
-  { id: "LEA_007", full_name: "Clark Kent", status: "Contacted", priority: "Medium", lead_score: 45, sentiment: "Neutral", property_id: "PROP_002", assigned_to: "USR_006", rent_range: "$2k-$2.5k", move_in: "2026-03-01" },
-  { id: "LEA_010", full_name: "Arthur Curry", status: "New", priority: "Medium", lead_score: 60, sentiment: "Positive", property_id: "PROP_005", assigned_to: "USR_003", rent_range: "$8k-$9k", move_in: "2026-02-15" }
+  { id: "LEA_001", full_name: "John Smith", status: "Contacted", priority: "High", lead_score: 85, sentiment: "Positive", property_id: "PROP_001", assigned_to: "USR_001", rent_range: "$3k-$3.5k", move_in: "2026-01-15", phone: "555-0100", email: "john.smith@example.com", notes: "Has a golden retriever", next_task_date: "2025-12-03 10:00" },
+  { id: "LEA_002", full_name: "Emily Davis", status: "Tour Scheduled", priority: "High", lead_score: 92, sentiment: "High Intent", property_id: "PROP_002", assigned_to: "USR_002", rent_range: "$1.8k-$2.2k", move_in: "2026-02-01", phone: "555-0101", email: "emily.d@example.com", notes: "Looking for quiet unit", next_task_date: "2025-12-05 13:00" },
+  { id: "LEA_003", full_name: "Robert Ford", status: "Lost", priority: "Low", lead_score: 20, sentiment: "Negative", property_id: "PROP_001", assigned_to: "USR_001", rent_range: "$4k-$5k", move_in: "2025-11-30", phone: "555-0102", email: "r.ford@example.com", notes: "Price too high", next_task_date: null },
+  { id: "LEA_004", full_name: "Michael Chen", status: "Application Pending", priority: "High", lead_score: 95, sentiment: "Neutral", property_id: "PROP_003", assigned_to: "USR_005", rent_range: "$1.4k-$1.6k", move_in: "2025-12-20", phone: "555-0103", email: "m.chen@example.com", notes: "Docs submitted", next_task_date: null },
+  { id: "LEA_006", full_name: "Bruce Wayne", status: "Leased", priority: "High", lead_score: 99, sentiment: "Positive", property_id: "PROP_005", assigned_to: "USR_003", rent_range: "$12k-$15k", move_in: "2025-12-15", phone: "555-0105", email: "b.wayne@example.com", notes: "VIP client", next_task_date: null },
+  { id: "LEA_007", full_name: "Clark Kent", status: "Contacted", priority: "Medium", lead_score: 45, sentiment: "Neutral", property_id: "PROP_002", assigned_to: "USR_006", rent_range: "$2k-$2.5k", move_in: "2026-03-01", phone: "555-0106", email: "c.kent@example.com", notes: "Reporter discount?", next_task_date: null },
+  { id: "LEA_010", full_name: "Arthur Curry", status: "New", priority: "Medium", lead_score: 60, sentiment: "Positive", property_id: "PROP_005", assigned_to: "USR_003", rent_range: "$8k-$9k", move_in: "2026-02-15", phone: "555-0109", email: "a.curry@example.com", notes: "Needs ocean view", next_task_date: null }
 ];
 
-const interactions = [
+const initialInteractions = [
   { id: "INT_001", lead_id: "LEA_001", type: "Email", direction: "Inbound", summary: "Inquired about 1BHK", date: "2025-12-01 09:00" },
   { id: "INT_002", lead_id: "LEA_001", type: "Email", direction: "Outbound", summary: "Sent brochure", date: "2025-12-01 09:15" },
-  { id: "INT_004", lead_id: "LEA_002", type: "SMS", direction: "Outbound", summary: "Confirmed tour for Friday", date: "2025-12-02 14:30" }
+  { id: "INT_004", lead_id: "LEA_002", type: "SMS", direction: "Outbound", summary: "Confirmed tour for Friday", date: "2025-12-02 14:30" },
+  { id: "INT_005", lead_id: "LEA_004", type: "Email", direction: "Inbound", summary: "Where do I upload paystubs?", date: "2025-12-04 14:00" },
+  { id: "INT_006", lead_id: "LEA_004", type: "Email", direction: "Outbound", summary: "Uploaded portal link", date: "2025-12-04 15:00" }
 ];
 
-const tasks: any[] = [];
+const initialTasks = [
+  { id: "TSK_001", lead_id: "LEA_001", title: "Follow Up Call", due_at: "2025-12-03 10:00", status: "Pending", assigned_to: "USR_001" },
+  { id: "TSK_002", lead_id: "LEA_002", title: "Prep Tour Keys", due_at: "2025-12-05 13:00", status: "Pending", assigned_to: "USR_002" },
+  { id: "TSK_003", lead_id: "LEA_004", title: "Review Income", due_at: "2025-12-05 10:00", status: "In Progress", assigned_to: "USR_005" }
+];
+
+const statusOptions = ["New", "Contacted", "Tour Scheduled", "Application Pending", "Leased", "Lost"];
 
 // =============== TYPES ===============
 type LeadStatus = 'New' | 'Contacted' | 'Tour Scheduled' | 'Application Pending' | 'Leased' | 'Lost';
@@ -85,6 +102,28 @@ interface Lead {
   assigned_to: string;
   rent_range: string;
   move_in: string;
+  phone: string;
+  email: string;
+  notes: string;
+  next_task_date: string | null;
+}
+
+interface Interaction {
+  id: string;
+  lead_id: string;
+  type: string;
+  direction: string;
+  summary: string;
+  date: string;
+}
+
+interface Task {
+  id: string;
+  lead_id: string;
+  title: string;
+  due_at: string;
+  status: string;
+  assigned_to: string;
 }
 
 // =============== CONFIGS ===============
@@ -115,8 +154,6 @@ const sentimentConfig: Record<Sentiment, { color: string; dotColor: string }> = 
 // =============== HELPER FUNCTIONS ===============
 const getUser = (userId: string) => users.find(u => u.id === userId);
 const getProperty = (propertyId: string) => properties.find(p => p.id === propertyId);
-const getLeadInteractions = (leadId: string) => interactions.filter(i => i.lead_id === leadId);
-const getLeadTasks = (leadId: string) => tasks.filter(t => t.lead_id === leadId);
 
 const getScoreColor = (score: number) => {
   if (score > 80) return 'bg-emerald-500 text-white';
@@ -126,13 +163,29 @@ const getScoreColor = (score: number) => {
 
 const CRM = () => {
   const [leads, setLeads] = useState<Lead[]>(initialLeads as Lead[]);
+  const [interactions, setInteractions] = useState<Interaction[]>(initialInteractions);
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [tourDate, setTourDate] = useState<Date | undefined>(undefined);
+  const [tourTime, setTourTime] = useState('10:00');
   const { toast } = useToast();
+
+  // Helper functions using state
+  const getLeadInteractions = (leadId: string) => interactions.filter(i => i.lead_id === leadId);
+  const getLeadTasks = (leadId: string) => tasks.filter(t => t.lead_id === leadId);
+
+  // Get earliest pending task date for a lead
+  const getNextTaskDate = (leadId: string) => {
+    const leadTasks = tasks
+      .filter(t => t.lead_id === leadId && t.status !== 'Completed')
+      .sort((a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime());
+    return leadTasks.length > 0 ? leadTasks[0].due_at : null;
+  };
 
   // Filtered leads
   const filteredLeads = useMemo(() => {
@@ -168,6 +221,9 @@ const CRM = () => {
     setLeads(prev => prev.map(lead => 
       lead.id === draggableId ? { ...lead, status: newStatus } : lead
     ));
+    if (selectedLead && selectedLead.id === draggableId) {
+      setSelectedLead({ ...selectedLead, status: newStatus });
+    }
     toast({
       title: 'Status updated',
       description: `Lead moved to ${newStatus}`,
@@ -182,6 +238,77 @@ const CRM = () => {
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const formatDateTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  };
+
+  // Actions
+  const handleStatusChange = (leadId: string, newStatus: LeadStatus) => {
+    setLeads(prev => prev.map(lead => 
+      lead.id === leadId ? { ...lead, status: newStatus } : lead
+    ));
+    if (selectedLead && selectedLead.id === leadId) {
+      setSelectedLead({ ...selectedLead, status: newStatus });
+    }
+    toast({
+      title: 'Status updated',
+      description: `Lead status changed to ${newStatus}`,
+    });
+  };
+
+  const handleScheduleTour = (leadId: string) => {
+    if (!tourDate) {
+      toast({ title: 'Select a date', description: 'Please select a tour date', variant: 'destructive' });
+      return;
+    }
+    const dateTimeStr = `${format(tourDate, 'yyyy-MM-dd')} ${tourTime}`;
+    const newTask: Task = {
+      id: `TSK_${Date.now()}`,
+      lead_id: leadId,
+      title: 'Tour',
+      due_at: dateTimeStr,
+      status: 'Pending',
+      assigned_to: 'USR_001' // current user
+    };
+    setTasks(prev => [...prev, newTask]);
+    setLeads(prev => prev.map(lead => 
+      lead.id === leadId ? { ...lead, next_task_date: dateTimeStr, status: 'Tour Scheduled' } : lead
+    ));
+    if (selectedLead && selectedLead.id === leadId) {
+      setSelectedLead({ ...selectedLead, next_task_date: dateTimeStr, status: 'Tour Scheduled' });
+    }
+    setTourDate(undefined);
+    toast({
+      title: 'Tour scheduled',
+      description: `Tour scheduled for ${formatDateTime(dateTimeStr)}`,
+    });
+  };
+
+  const handleLogInteraction = (leadId: string, type: 'Email' | 'SMS' | 'Call') => {
+    const newInteraction: Interaction = {
+      id: `INT_${Date.now()}`,
+      lead_id: leadId,
+      type,
+      direction: 'Outbound',
+      summary: `${type} sent`,
+      date: new Date().toISOString().replace('T', ' ').substring(0, 16)
+    };
+    setInteractions(prev => [...prev, newInteraction]);
+    toast({
+      title: `${type} logged`,
+      description: `${type} interaction recorded`,
+    });
+  };
+
+  const handleToggleTask = (taskId: string) => {
+    setTasks(prev => prev.map(task => 
+      task.id === taskId 
+        ? { ...task, status: task.status === 'Completed' ? 'Pending' : 'Completed' } 
+        : task
+    ));
   };
 
   // Lead Card Component
@@ -304,7 +431,7 @@ const CRM = () => {
         <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-purple-500" />
+              <CalendarIcon className="h-4 w-4 text-purple-500" />
               Tours Scheduled
             </CardDescription>
             <CardTitle className="text-3xl text-slate-900 dark:text-slate-100">{stats.toursScheduled}</CardTitle>
@@ -339,7 +466,7 @@ const CRM = () => {
                 <SelectTrigger className="w-[160px] bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                   <SelectItem value="all">All Statuses</SelectItem>
                   {statusOrder.map(status => (
                     <SelectItem key={status} value={status}>{status}</SelectItem>
@@ -350,7 +477,7 @@ const CRM = () => {
                 <SelectTrigger className="w-[140px] bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700">
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                   <SelectItem value="all">All Priorities</SelectItem>
                   <SelectItem value="High">High</SelectItem>
                   <SelectItem value="Medium">Medium</SelectItem>
@@ -453,7 +580,7 @@ const CRM = () => {
               <TableBody>
                 {filteredLeads.map(lead => {
                   const property = getProperty(lead.property_id);
-                  const leadTasks = getLeadTasks(lead.id);
+                  const nextTask = getNextTaskDate(lead.id);
                   return (
                     <TableRow 
                       key={lead.id} 
@@ -466,10 +593,10 @@ const CRM = () => {
                           {lead.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-slate-500">—</TableCell>
-                      <TableCell className="text-slate-500">—</TableCell>
+                      <TableCell className="text-slate-600 dark:text-slate-400">{lead.phone || '—'}</TableCell>
+                      <TableCell className="text-slate-600 dark:text-slate-400">{lead.email || '—'}</TableCell>
                       <TableCell className="text-slate-600 dark:text-slate-400">{property?.name || '—'}</TableCell>
-                      <TableCell className="text-slate-500">{leadTasks.length > 0 ? leadTasks[0].due_date : '—'}</TableCell>
+                      <TableCell className="text-slate-600 dark:text-slate-400">{nextTask ? formatDateTime(nextTask) : '—'}</TableCell>
                       <TableCell>
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${getScoreColor(lead.lead_score)}`}>
                           {lead.lead_score}
@@ -514,20 +641,23 @@ const CRM = () => {
                     </div>
                   </SheetTitle>
                   <SheetDescription className="text-slate-500">
-                    Unified profile across all inquiries and touchpoints
+                    <div className="flex flex-col gap-1">
+                      <span><Phone className="inline h-3 w-3 mr-1" />{selectedLead.phone || '—'}</span>
+                      <span><Mail className="inline h-3 w-3 mr-1" />{selectedLead.email || '—'}</span>
+                    </div>
                   </SheetDescription>
                   
                   {/* Contact Buttons */}
                   <div className="flex gap-2 pt-4">
-                    <Button variant="outline" size="sm" className="border-slate-200 dark:border-slate-700">
+                    <Button variant="outline" size="sm" className="border-slate-200 dark:border-slate-700" onClick={() => handleLogInteraction(selectedLead.id, 'Call')}>
                       <Phone className="h-4 w-4 mr-1" />
                       Call
                     </Button>
-                    <Button variant="outline" size="sm" className="border-slate-200 dark:border-slate-700">
+                    <Button variant="outline" size="sm" className="border-slate-200 dark:border-slate-700" onClick={() => handleLogInteraction(selectedLead.id, 'Email')}>
                       <Mail className="h-4 w-4 mr-1" />
                       Email
                     </Button>
-                    <Button variant="outline" size="sm" className="border-slate-200 dark:border-slate-700">
+                    <Button variant="outline" size="sm" className="border-slate-200 dark:border-slate-700" onClick={() => handleLogInteraction(selectedLead.id, 'SMS')}>
                       <MessageSquare className="h-4 w-4 mr-1" />
                       SMS
                     </Button>
@@ -539,6 +669,7 @@ const CRM = () => {
                     <TabsTrigger value="timeline" className="flex-1 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700">Timeline</TabsTrigger>
                     <TabsTrigger value="tasks" className="flex-1 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700">Tasks</TabsTrigger>
                     <TabsTrigger value="profile" className="flex-1 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700">Profile</TabsTrigger>
+                    <TabsTrigger value="actions" className="flex-1 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700">Actions</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="timeline" className="space-y-4 mt-4">
@@ -553,6 +684,7 @@ const CRM = () => {
                                   {interaction.type === 'Email' && <Mail className="h-3 w-3" />}
                                   {interaction.type === 'SMS' && <MessageSquare className="h-3 w-3" />}
                                   {interaction.type === 'Call' && <Phone className="h-3 w-3" />}
+                                  {interaction.type === 'View' && <Eye className="h-3 w-3" />}
                                 </div>
                                 <div className="flex-1">
                                   <div className="flex items-center justify-between mb-1">
@@ -565,7 +697,7 @@ const CRM = () => {
                                       </Badge>
                                     </div>
                                     <span className="text-xs text-slate-500">
-                                      {formatDate(interaction.date)}
+                                      {formatDateTime(interaction.date)}
                                     </span>
                                   </div>
                                   <p className="text-sm text-slate-700 dark:text-slate-300">{interaction.summary}</p>
@@ -586,7 +718,21 @@ const CRM = () => {
                       leadTasks.map((task) => (
                         <Card key={task.id} className="border-slate-200 dark:border-slate-700">
                           <CardContent className="p-4">
-                            <p className="text-sm">{task.description}</p>
+                            <div className="flex items-center gap-3">
+                              <Checkbox 
+                                checked={task.status === 'Completed'}
+                                onCheckedChange={() => handleToggleTask(task.id)}
+                              />
+                              <div className="flex-1">
+                                <p className={`text-sm font-medium ${task.status === 'Completed' ? 'line-through text-slate-400' : 'text-slate-900 dark:text-slate-100'}`}>
+                                  {task.title}
+                                </p>
+                                <p className="text-xs text-slate-500">Due: {formatDateTime(task.due_at)}</p>
+                              </div>
+                              <Badge variant="secondary" className={`text-xs ${task.status === 'Completed' ? 'bg-emerald-100 text-emerald-600' : task.status === 'In Progress' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600'}`}>
+                                {task.status}
+                              </Badge>
+                            </div>
                           </CardContent>
                         </Card>
                       ))
@@ -650,6 +796,96 @@ const CRM = () => {
                             <span className="font-medium text-slate-900 dark:text-slate-100">{user?.name || 'Unassigned'}</span>
                           </div>
                         </div>
+                        {selectedLead.notes && (
+                          <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                            <span className="text-slate-500">Notes:</span>
+                            <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">{selectedLead.notes}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="actions" className="space-y-4 mt-4">
+                    {/* Change Status */}
+                    <Card className="border-slate-200 dark:border-slate-700">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm text-slate-700 dark:text-slate-300">Change Status</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <Select value={selectedLead.status} onValueChange={(val) => handleStatusChange(selectedLead.id, val as LeadStatus)}>
+                          <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                            {statusOptions.map(status => (
+                              <SelectItem key={status} value={status}>{status}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+
+                    {/* Schedule Tour */}
+                    <Card className="border-slate-200 dark:border-slate-700">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm text-slate-700 dark:text-slate-300">Schedule Tour</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal border-slate-200 dark:border-slate-700",
+                                !tourDate && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {tourDate ? format(tourDate, 'PPP') : <span>Pick a date</span>}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={tourDate}
+                              onSelect={setTourDate}
+                              initialFocus
+                              className={cn("p-3 pointer-events-auto")}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <Input
+                          type="time"
+                          value={tourTime}
+                          onChange={(e) => setTourTime(e.target.value)}
+                          className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                        />
+                        <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => handleScheduleTour(selectedLead.id)}>
+                          <CalendarIcon className="h-4 w-4 mr-2" />
+                          Schedule Tour
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* Log Interactions */}
+                    <Card className="border-slate-200 dark:border-slate-700">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm text-slate-700 dark:text-slate-300">Log Interaction</CardTitle>
+                      </CardHeader>
+                      <CardContent className="flex gap-2">
+                        <Button variant="outline" className="flex-1 border-slate-200 dark:border-slate-700" onClick={() => handleLogInteraction(selectedLead.id, 'Email')}>
+                          <Mail className="h-4 w-4 mr-1" />
+                          Email
+                        </Button>
+                        <Button variant="outline" className="flex-1 border-slate-200 dark:border-slate-700" onClick={() => handleLogInteraction(selectedLead.id, 'SMS')}>
+                          <MessageSquare className="h-4 w-4 mr-1" />
+                          SMS
+                        </Button>
+                        <Button variant="outline" className="flex-1 border-slate-200 dark:border-slate-700" onClick={() => handleLogInteraction(selectedLead.id, 'Call')}>
+                          <Phone className="h-4 w-4 mr-1" />
+                          Call
+                        </Button>
                       </CardContent>
                     </Card>
                   </TabsContent>
