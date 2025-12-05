@@ -158,39 +158,39 @@ interface Task {
 
 // =============== CONFIGS ===============
 const statusConfig: Record<LeadStatus, { label: string; color: string; bgColor: string }> = {
-  'New': { label: 'New', color: 'bg-blue-500', bgColor: 'bg-blue-500/10' },
-  'Contacted': { label: 'Contacted', color: 'bg-amber-500', bgColor: 'bg-amber-500/10' },
-  'Tour Scheduled': { label: 'Tour Scheduled', color: 'bg-purple-500', bgColor: 'bg-purple-500/10' },
-  'Application Pending': { label: 'Application Pending', color: 'bg-indigo-500', bgColor: 'bg-indigo-500/10' },
-  'Leased': { label: 'Leased', color: 'bg-emerald-500', bgColor: 'bg-emerald-500/10' },
-  'Lost': { label: 'Lost', color: 'bg-slate-400', bgColor: 'bg-slate-400/10' },
+  'New': { label: 'New', color: 'bg-status-new', bgColor: 'bg-status-new/10' },
+  'Contacted': { label: 'Contacted', color: 'bg-status-contacted', bgColor: 'bg-status-contacted/10' },
+  'Tour Scheduled': { label: 'Tour Scheduled', color: 'bg-status-tour', bgColor: 'bg-status-tour/10' },
+  'Application Pending': { label: 'Application Pending', color: 'bg-status-application', bgColor: 'bg-status-application/10' },
+  'Leased': { label: 'Leased', color: 'bg-status-leased', bgColor: 'bg-status-leased/10' },
+  'Lost': { label: 'Lost', color: 'bg-status-lost', bgColor: 'bg-status-lost/10' },
 };
 
 const statusOrder: LeadStatus[] = ['New', 'Contacted', 'Tour Scheduled', 'Application Pending', 'Leased', 'Lost'];
 
 const priorityConfig: Record<Priority, { color: string; bgColor: string }> = {
-  'High': { color: 'text-red-600', bgColor: 'bg-red-100 dark:bg-red-900/30' },
-  'Medium': { color: 'text-amber-600', bgColor: 'bg-amber-100 dark:bg-amber-900/30' },
-  'Low': { color: 'text-slate-500', bgColor: 'bg-slate-100 dark:bg-slate-700/30' },
+  'High': { color: 'text-priority-high', bgColor: 'bg-priority-high/15 dark:bg-priority-high/25' },
+  'Medium': { color: 'text-priority-medium', bgColor: 'bg-priority-medium/15 dark:bg-priority-medium/25' },
+  'Low': { color: 'text-priority-low', bgColor: 'bg-priority-low/15 dark:bg-priority-low/25' },
 };
 
 const sentimentConfig: Record<Sentiment, { color: string; dotColor: string }> = {
-  'Positive': { color: 'text-emerald-600', dotColor: 'bg-emerald-500' },
-  'Neutral': { color: 'text-amber-600', dotColor: 'bg-amber-500' },
-  'Negative': { color: 'text-red-600', dotColor: 'bg-red-500' },
-  'High Intent': { color: 'text-emerald-600', dotColor: 'bg-emerald-500' },
+  'Positive': { color: 'text-status-leased', dotColor: 'bg-status-leased' },
+  'Neutral': { color: 'text-status-contacted', dotColor: 'bg-status-contacted' },
+  'Negative': { color: 'text-priority-high', dotColor: 'bg-priority-high' },
+  'High Intent': { color: 'text-status-leased', dotColor: 'bg-status-leased' },
 };
 
 const sourceConfig: Record<LeadSource, { icon: typeof Globe; color: string }> = {
-  'ILS': { icon: MapPin, color: 'text-indigo-500' },
-  'Website': { icon: Globe, color: 'text-blue-500' },
-  'Referral': { icon: UserPlus, color: 'text-emerald-500' },
-  'Call': { icon: Phone, color: 'text-amber-500' },
-  'SMS': { icon: MessageSquare, color: 'text-purple-500' },
-  'Email': { icon: Mail, color: 'text-red-500' },
-  'Craigslist': { icon: Globe, color: 'text-orange-500' },
-  'Walk-In': { icon: User, color: 'text-cyan-500' },
-  'Other': { icon: Globe, color: 'text-slate-500' },
+  'ILS': { icon: MapPin, color: 'text-muted-foreground' },
+  'Website': { icon: Globe, color: 'text-muted-foreground' },
+  'Referral': { icon: UserPlus, color: 'text-status-leased' },
+  'Call': { icon: Phone, color: 'text-primary' },
+  'SMS': { icon: MessageSquare, color: 'text-secondary' },
+  'Email': { icon: Mail, color: 'text-primary-light' },
+  'Craigslist': { icon: Globe, color: 'text-status-contacted' },
+  'Walk-In': { icon: User, color: 'text-secondary' },
+  'Other': { icon: Globe, color: 'text-muted-foreground' },
 };
 
 // =============== HELPER FUNCTIONS ===============
@@ -198,9 +198,9 @@ const getUser = (userId: string) => users.find(u => u.id === userId);
 const getProperty = (propertyId: string) => properties.find(p => p.id === propertyId);
 
 const getScoreColor = (score: number) => {
-  if (score > 80) return 'bg-emerald-500 text-white';
-  if (score >= 50) return 'bg-amber-500 text-white';
-  return 'bg-red-500 text-white';
+  if (score > 80) return 'bg-status-leased text-white';
+  if (score >= 50) return 'bg-status-contacted text-white';
+  return 'bg-priority-high text-white';
 };
 
 // Audio Player Component
@@ -226,13 +226,13 @@ const AudioPlayer = ({ attachment }: { attachment: AudioAttachment }) => {
 
   if (attachment.error) {
     return (
-      <div className="flex items-center gap-2 mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded">
-        <AlertCircle className="h-4 w-4 text-red-500" />
-        <span className="text-xs text-red-600">Playback error</span>
+      <div className="flex items-center gap-2 mt-2 p-2 bg-destructive/10 rounded">
+        <AlertCircle className="h-4 w-4 text-destructive" />
+        <span className="text-xs text-destructive">Playback error</span>
         <a 
           href={attachment.url} 
           download={attachment.filename}
-          className="text-xs text-indigo-600 hover:underline ml-auto"
+          className="text-xs text-primary hover:underline ml-auto"
           onClick={(e) => e.stopPropagation()}
         >
           <Download className="h-3 w-3 inline mr-1" />
@@ -244,14 +244,14 @@ const AudioPlayer = ({ attachment }: { attachment: AudioAttachment }) => {
 
   return (
     <div 
-      className="flex items-center gap-2 mt-2 p-2 bg-slate-100 dark:bg-slate-800 rounded"
+      className="flex items-center gap-2 mt-2 p-2 bg-muted rounded"
       role="region"
       aria-label="Audio player"
     >
       <Button 
         variant="ghost" 
         size="sm" 
-        className="h-8 w-8 p-0" 
+        className="h-8 w-8 p-0 text-primary hover:text-primary-hover" 
         onClick={togglePlay}
         aria-label={isPlaying ? "Pause" : "Play"}
       >
@@ -263,11 +263,14 @@ const AudioPlayer = ({ attachment }: { attachment: AudioAttachment }) => {
         onEnded={handleEnded}
         aria-hidden="true"
       />
-      <span className="text-xs text-slate-600 dark:text-slate-400 truncate flex-1">
+      <div className="flex-1 h-1 bg-border rounded-full overflow-hidden">
+        <div className="h-full w-1/3 bg-primary rounded-full" />
+      </div>
+      <span className="text-xs text-muted-foreground truncate max-w-[100px]">
         {attachment.filename}
       </span>
       {attachment.duration && (
-        <span className="text-xs text-slate-500">{Math.round(attachment.duration)}s</span>
+        <span className="text-xs text-muted-foreground">{Math.round(attachment.duration)}s</span>
       )}
     </div>
   );
@@ -302,7 +305,7 @@ const SourceBadge = ({ source, sourceDetail, compact = false }: { source: LeadSo
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Badge variant="secondary" className="text-xs bg-slate-100 dark:bg-slate-700 gap-1">
+          <Badge variant="secondary" className="text-xs bg-muted border border-border gap-1">
             <Icon className={`h-3 w-3 ${config.color}`} />
             {source}
           </Badge>
@@ -612,8 +615,8 @@ const CRM = () => {
             {...provided.draggableProps}
             {...provided.dragHandleProps}
             tabIndex={0}
-            className={`cursor-pointer hover:shadow-md transition-all border-slate-200 dark:border-slate-700 ${
-              snapshot.isDragging ? 'shadow-lg ring-2 ring-indigo-500' : ''
+            className={`cursor-pointer hover:shadow-md transition-all border-border bg-card ${
+              snapshot.isDragging ? 'shadow-lg ring-2 ring-primary crm-shadow-glow' : ''
             }`}
             onClick={() => openLeadDetail(lead)}
             onKeyDown={(e) => e.key === 'Enter' && openLeadDetail(lead)}
@@ -622,7 +625,7 @@ const CRM = () => {
               {/* Header */}
               <div className="flex items-start justify-between">
                 <div>
-                  <h4 className="font-semibold text-sm">{lead.full_name}</h4>
+                  <h4 className="font-semibold text-sm text-foreground">{lead.full_name}</h4>
                   <p className="text-xs text-muted-foreground">{lead.rent_range}</p>
                 </div>
                 <Badge className={`text-xs ${priorityConfig[lead.priority].bgColor} ${priorityConfig[lead.priority].color} border-0`}>
@@ -633,7 +636,7 @@ const CRM = () => {
               {/* Sentiment */}
               <div className="flex items-center gap-1.5">
                 {lead.sentiment === 'High Intent' ? (
-                  <Star className="h-3 w-3 text-emerald-500 fill-emerald-500" />
+                  <Star className="h-3 w-3 text-status-leased fill-status-leased" />
                 ) : (
                   <div className={`w-2 h-2 rounded-full ${sentimentConfig[lead.sentiment].dotColor}`} />
                 )}
@@ -659,11 +662,11 @@ const CRM = () => {
               )}
 
               {/* Footer */}
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
+              <div className="flex items-center justify-between pt-2 border-t border-border">
                 <div className="flex items-center gap-2">
-                  <Avatar className="h-6 w-6">
+                  <Avatar className="h-6 w-6 ring-2 ring-secondary/30">
                     <AvatarImage src={user?.avatar} />
-                    <AvatarFallback className="text-xs bg-slate-200 dark:bg-slate-700">
+                    <AvatarFallback className="text-xs bg-muted text-muted-foreground">
                       {user?.name?.split(' ').map(n => n[0]).join('') || '?'}
                     </AvatarFallback>
                   </Avatar>
@@ -683,14 +686,14 @@ const CRM = () => {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-full mx-auto animate-fade-in bg-slate-50 dark:bg-slate-900 min-h-screen">
+    <div className="p-6 space-y-6 max-w-full mx-auto animate-fade-in bg-background min-h-screen">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">CRM & Leads</h1>
-          <p className="text-slate-500 dark:text-slate-400">Omni-channel lead management and tracking</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">CRM & Leads</h1>
+          <p className="text-muted-foreground">Omni-channel lead management and tracking</p>
         </div>
-        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setIsAddLeadOpen(true)}>
+        <Button className="bg-primary hover:bg-primary-hover text-primary-foreground" onClick={() => setIsAddLeadOpen(true)}>
           <User className="h-4 w-4 mr-2" />
           Add Lead
         </Button>
@@ -698,63 +701,63 @@ const CRM = () => {
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+        <Card className="bg-card border-border shadow-sm border-b-2 border-b-primary/15">
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-indigo-500" />
+              <Users className="h-4 w-4 text-primary" />
               Total Active Leads
             </CardDescription>
-            <CardTitle className="text-3xl text-slate-900 dark:text-slate-100">{stats.totalActive}</CardTitle>
+            <CardTitle className="text-3xl text-foreground">{stats.totalActive}</CardTitle>
           </CardHeader>
         </Card>
-        <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+        <Card className="bg-card border-border shadow-sm border-b-2 border-b-primary/15">
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-red-500" />
+              <Target className="h-4 w-4 text-priority-high" />
               High Priority
             </CardDescription>
-            <CardTitle className="text-3xl text-slate-900 dark:text-slate-100">{stats.highPriority}</CardTitle>
+            <CardTitle className="text-3xl text-foreground">{stats.highPriority}</CardTitle>
           </CardHeader>
         </Card>
-        <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+        <Card className="bg-card border-border shadow-sm border-b-2 border-b-primary/15">
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-2">
-              <CalendarIcon className="h-4 w-4 text-purple-500" />
+              <CalendarIcon className="h-4 w-4 text-status-tour" />
               Tours Scheduled
             </CardDescription>
-            <CardTitle className="text-3xl text-slate-900 dark:text-slate-100">{stats.toursScheduled}</CardTitle>
+            <CardTitle className="text-3xl text-foreground">{stats.toursScheduled}</CardTitle>
           </CardHeader>
         </Card>
-        <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+        <Card className="bg-card border-border shadow-sm border-b-2 border-b-primary/15">
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-emerald-500" />
+              <TrendingUp className="h-4 w-4 text-status-leased" />
               Avg Lead Score
             </CardDescription>
-            <CardTitle className="text-3xl text-slate-900 dark:text-slate-100">{stats.avgScore}</CardTitle>
+            <CardTitle className="text-3xl text-foreground">{stats.avgScore}</CardTitle>
           </CardHeader>
         </Card>
       </div>
 
       {/* Filters & View Toggle */}
-      <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+      <Card className="bg-card border-border">
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
             <div className="flex flex-col sm:flex-row gap-4 flex-1 w-full md:w-auto flex-wrap">
               <div className="relative flex-1 max-w-md min-w-[200px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search leads..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700"
+                  className="pl-10 bg-muted border-border focus:ring-2 focus:ring-primary"
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[160px] bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                <SelectTrigger className="w-[160px] bg-muted border-border">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                <SelectContent className="bg-popover border-border">
                   <SelectItem value="all">All Statuses</SelectItem>
                   {statusOrder.map(status => (
                     <SelectItem key={status} value={status}>{status}</SelectItem>
@@ -762,10 +765,10 @@ const CRM = () => {
                 </SelectContent>
               </Select>
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="w-[140px] bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                <SelectTrigger className="w-[140px] bg-muted border-border">
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                <SelectContent className="bg-popover border-border">
                   <SelectItem value="all">All Priorities</SelectItem>
                   <SelectItem value="High">High</SelectItem>
                   <SelectItem value="Medium">Medium</SelectItem>
@@ -773,10 +776,10 @@ const CRM = () => {
                 </SelectContent>
               </Select>
               <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                <SelectTrigger className="w-[140px] bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                <SelectTrigger className="w-[140px] bg-muted border-border">
                   <SelectValue placeholder="Source" />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                <SelectContent className="bg-popover border-border">
                   <SelectItem value="all">All Sources</SelectItem>
                   {sourceOptions.map(src => (
                     <SelectItem key={src} value={src}>{src}</SelectItem>
@@ -789,7 +792,7 @@ const CRM = () => {
                 variant={viewMode === 'kanban' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('kanban')}
-                className={viewMode === 'kanban' ? 'bg-indigo-600 hover:bg-indigo-700' : 'border-slate-200 dark:border-slate-700'}
+                className={viewMode === 'kanban' ? 'bg-primary hover:bg-primary-hover text-primary-foreground' : 'border-border text-foreground hover:bg-muted'}
               >
                 <LayoutGrid className="h-4 w-4 mr-1" />
                 Kanban
@@ -798,7 +801,7 @@ const CRM = () => {
                 variant={viewMode === 'list' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('list')}
-                className={viewMode === 'list' ? 'bg-indigo-600 hover:bg-indigo-700' : 'border-slate-200 dark:border-slate-700'}
+                className={viewMode === 'list' ? 'bg-primary hover:bg-primary-hover text-primary-foreground' : 'border-border text-foreground hover:bg-muted'}
               >
                 <List className="h-4 w-4 mr-1" />
                 List
@@ -818,14 +821,14 @@ const CRM = () => {
 
               return (
                 <div key={status} className="flex-shrink-0 w-72">
-                  <Card className="h-full bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
+                  <Card className="h-full bg-kanban-column border-border">
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-semibold flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                        <CardTitle className="text-sm font-semibold flex items-center gap-2 text-primary">
                           <div className={`w-3 h-3 rounded-full ${config.color}`} />
                           {config.label}
                         </CardTitle>
-                        <Badge variant="secondary" className="bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                        <Badge variant="secondary" className="bg-muted text-muted-foreground">
                           {statusLeads.length}
                         </Badge>
                       </div>
@@ -837,7 +840,7 @@ const CRM = () => {
                           ref={provided.innerRef}
                           {...provided.droppableProps}
                           className={`space-y-3 min-h-[500px] ${
-                            snapshot.isDraggingOver ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''
+                            snapshot.isDraggingOver ? 'bg-primary/5' : ''
                           }`}
                         >
                           <ScrollArea className="h-[calc(100vh-400px)]">
@@ -861,19 +864,19 @@ const CRM = () => {
 
       {/* List View */}
       {viewMode === 'list' && (
-        <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-200 dark:border-slate-700">
-                  <TableHead className="text-slate-600 dark:text-slate-400">Name</TableHead>
-                  <TableHead className="text-slate-600 dark:text-slate-400">Status</TableHead>
-                  <TableHead className="text-slate-600 dark:text-slate-400">Phone</TableHead>
-                  <TableHead className="text-slate-600 dark:text-slate-400">Email</TableHead>
-                  <TableHead className="text-slate-600 dark:text-slate-400">Property</TableHead>
-                  <TableHead className="text-slate-600 dark:text-slate-400">Source</TableHead>
-                  <TableHead className="text-slate-600 dark:text-slate-400">Next Task Date</TableHead>
-                  <TableHead className="text-slate-600 dark:text-slate-400">Score</TableHead>
+                <TableRow className="border-border bg-muted/50">
+                  <TableHead className="text-muted-foreground">Name</TableHead>
+                  <TableHead className="text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-muted-foreground">Phone</TableHead>
+                  <TableHead className="text-muted-foreground">Email</TableHead>
+                  <TableHead className="text-muted-foreground">Property</TableHead>
+                  <TableHead className="text-muted-foreground">Source</TableHead>
+                  <TableHead className="text-muted-foreground">Next Task Date</TableHead>
+                  <TableHead className="text-muted-foreground">Score</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -884,29 +887,29 @@ const CRM = () => {
                   return (
                     <TableRow 
                       key={lead.id} 
-                      className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 border-slate-200 dark:border-slate-700"
+                      className="cursor-pointer hover:bg-primary/5 border-border"
                       onClick={() => openLeadDetail(lead)}
                     >
-                      <TableCell className="font-medium text-slate-900 dark:text-slate-100">{lead.full_name}</TableCell>
+                      <TableCell className="font-medium text-foreground">{lead.full_name}</TableCell>
                       <TableCell>
                         <Badge className={`${statusConfig[lead.status].bgColor} ${statusConfig[lead.status].color.replace('bg-', 'text-').replace('-500', '-600')} border-0`}>
                           {lead.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-slate-600 dark:text-slate-400">{lead.phone || '—'}</TableCell>
-                      <TableCell className="text-slate-600 dark:text-slate-400">{lead.email || '—'}</TableCell>
-                      <TableCell className="text-slate-600 dark:text-slate-400">{property?.name || '—'}</TableCell>
+                      <TableCell className="text-muted-foreground">{lead.phone || '—'}</TableCell>
+                      <TableCell className="text-muted-foreground">{lead.email || '—'}</TableCell>
+                      <TableCell className="text-muted-foreground">{property?.name || '—'}</TableCell>
                       <TableCell>
                         <SourceBadge source={lead.source} sourceDetail={lead.source_detail} />
                       </TableCell>
-                      <TableCell className="text-slate-600 dark:text-slate-400">{nextTask ? formatDateTime(nextTask) : '—'}</TableCell>
+                      <TableCell className="text-muted-foreground">{nextTask ? formatDateTime(nextTask) : '—'}</TableCell>
                       <TableCell>
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${getScoreColor(lead.lead_score)}`}>
                           {lead.lead_score}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <ChevronRight className="h-4 w-4 text-slate-400" />
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </TableCell>
                     </TableRow>
                   );
@@ -919,10 +922,10 @@ const CRM = () => {
 
       {/* Add Lead Dialog */}
       <Dialog open={isAddLeadOpen} onOpenChange={setIsAddLeadOpen}>
-        <DialogContent className="sm:max-w-[500px] bg-white dark:bg-slate-900">
+        <DialogContent className="sm:max-w-[500px] bg-popover border-border">
           <DialogHeader>
-            <DialogTitle className="text-slate-900 dark:text-slate-100">Add New Lead</DialogTitle>
-            <DialogDescription>Enter lead information to create a new record.</DialogDescription>
+            <DialogTitle className="text-foreground">Add New Lead</DialogTitle>
+            <DialogDescription className="text-muted-foreground">Enter lead information to create a new record.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -931,7 +934,7 @@ const CRM = () => {
                 id="name" 
                 value={newLead.full_name}
                 onChange={(e) => setNewLead(prev => ({ ...prev, full_name: e.target.value }))}
-                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                className="bg-muted border-border focus:ring-2 focus:ring-primary"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -941,7 +944,7 @@ const CRM = () => {
                   id="phone" 
                   value={newLead.phone}
                   onChange={(e) => setNewLead(prev => ({ ...prev, phone: e.target.value }))}
-                  className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                  className="bg-muted border-border focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div className="grid gap-2">
@@ -951,7 +954,7 @@ const CRM = () => {
                   type="email"
                   value={newLead.email}
                   onChange={(e) => setNewLead(prev => ({ ...prev, email: e.target.value }))}
-                  className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                  className="bg-muted border-border focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
@@ -959,10 +962,10 @@ const CRM = () => {
               <div className="grid gap-2">
                 <Label>Source</Label>
                 <Select value={newLead.source} onValueChange={(val) => setNewLead(prev => ({ ...prev, source: val as LeadSource }))}>
-                  <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                  <SelectTrigger className="bg-muted border-border">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                  <SelectContent className="bg-popover border-border">
                     {sourceOptions.map(src => (
                       <SelectItem key={src} value={src}>{src}</SelectItem>
                     ))}
@@ -976,7 +979,7 @@ const CRM = () => {
                   placeholder="e.g., zillow, contact form"
                   value={newLead.source_detail}
                   onChange={(e) => setNewLead(prev => ({ ...prev, source_detail: e.target.value }))}
-                  className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                  className="bg-muted border-border focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
@@ -984,10 +987,10 @@ const CRM = () => {
               <div className="grid gap-2">
                 <Label>Property</Label>
                 <Select value={newLead.property_id} onValueChange={(val) => setNewLead(prev => ({ ...prev, property_id: val }))}>
-                  <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                  <SelectTrigger className="bg-muted border-border">
                     <SelectValue placeholder="Select property" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                  <SelectContent className="bg-popover border-border">
                     {properties.map(prop => (
                       <SelectItem key={prop.id} value={prop.id}>{prop.name}</SelectItem>
                     ))}
@@ -997,10 +1000,10 @@ const CRM = () => {
               <div className="grid gap-2">
                 <Label>Priority</Label>
                 <Select value={newLead.priority} onValueChange={(val) => setNewLead(prev => ({ ...prev, priority: val as Priority }))}>
-                  <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                  <SelectTrigger className="bg-muted border-border">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                  <SelectContent className="bg-popover border-border">
                     <SelectItem value="High">High</SelectItem>
                     <SelectItem value="Medium">Medium</SelectItem>
                     <SelectItem value="Low">Low</SelectItem>
@@ -1015,7 +1018,7 @@ const CRM = () => {
                 placeholder="e.g., $2k-$2.5k"
                 value={newLead.rent_range}
                 onChange={(e) => setNewLead(prev => ({ ...prev, rent_range: e.target.value }))}
-                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                className="bg-muted border-border focus:ring-2 focus:ring-primary"
               />
             </div>
             <div className="grid gap-2">
@@ -1024,23 +1027,23 @@ const CRM = () => {
                 id="notes" 
                 value={newLead.notes}
                 onChange={(e) => setNewLead(prev => ({ ...prev, notes: e.target.value }))}
-                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                className="bg-muted border-border focus:ring-2 focus:ring-primary"
               />
             </div>
             
             {/* Call Recording (only shown when source is Call) */}
             {newLead.source === 'Call' && (
-              <div className="grid gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+              <div className="grid gap-2 p-3 bg-muted rounded-lg border border-border">
                 <Label className="flex items-center gap-2">
-                  <Mic className="h-4 w-4 text-amber-500" />
+                  <Mic className="h-4 w-4 text-primary" />
                   Attach call recording (optional)
                 </Label>
                 <div className="grid grid-cols-2 gap-4">
                   <Select value={callDirection} onValueChange={(val) => setCallDirection(val as 'Inbound' | 'Missed')}>
-                    <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                    <SelectTrigger className="bg-card border-border">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-slate-800">
+                    <SelectContent className="bg-popover border-border">
                       <SelectItem value="Inbound">Inbound</SelectItem>
                       <SelectItem value="Missed">Missed</SelectItem>
                     </SelectContent>
@@ -1050,13 +1053,13 @@ const CRM = () => {
                       type="file"
                       accept="audio/*"
                       onChange={(e) => setCallRecording(e.target.files?.[0] || null)}
-                      className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
+                      className="bg-card border-border"
                       aria-label="Upload call recording"
                     />
                   </div>
                 </div>
                 {callRecording && (
-                  <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                  <div className="text-xs text-muted-foreground flex items-center gap-1">
                     <Upload className="h-3 w-3" />
                     {callRecording.name}
                   </div>
@@ -1065,10 +1068,10 @@ const CRM = () => {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddLeadOpen(false)} className="border-slate-200 dark:border-slate-700">
+            <Button variant="outline" onClick={() => setIsAddLeadOpen(false)} className="border-border text-foreground hover:bg-muted">
               Cancel
             </Button>
-            <Button onClick={handleAddLead} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Button onClick={handleAddLead} className="bg-primary hover:bg-primary-hover text-primary-foreground">
               Add Lead
             </Button>
           </DialogFooter>
@@ -1077,19 +1080,19 @@ const CRM = () => {
 
       {/* Log Call Dialog */}
       <Dialog open={isLogCallOpen} onOpenChange={setIsLogCallOpen}>
-        <DialogContent className="sm:max-w-[400px] bg-white dark:bg-slate-900">
+        <DialogContent className="sm:max-w-[400px] bg-popover border-border">
           <DialogHeader>
-            <DialogTitle className="text-slate-900 dark:text-slate-100">Log Call</DialogTitle>
-            <DialogDescription>Record a call interaction with optional voice recording.</DialogDescription>
+            <DialogTitle className="text-foreground">Log Call</DialogTitle>
+            <DialogDescription className="text-muted-foreground">Record a call interaction with optional voice recording.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label>Direction</Label>
               <Select value={logCallDirection} onValueChange={(val) => setLogCallDirection(val as 'Inbound' | 'Outbound')}>
-                <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                <SelectTrigger className="bg-muted border-border">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-slate-800">
+                <SelectContent className="bg-popover border-border">
                   <SelectItem value="Inbound">Inbound</SelectItem>
                   <SelectItem value="Outbound">Outbound</SelectItem>
                 </SelectContent>
@@ -1102,23 +1105,23 @@ const CRM = () => {
                 placeholder="Brief description of the call..."
                 value={logCallSummary}
                 onChange={(e) => setLogCallSummary(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                className="bg-muted border-border focus:ring-2 focus:ring-primary"
               />
             </div>
             <div className="grid gap-2">
               <Label className="flex items-center gap-2">
-                <Mic className="h-4 w-4 text-amber-500" />
+                <Mic className="h-4 w-4 text-primary" />
                 Attach recording (optional)
               </Label>
               <Input
                 type="file"
                 accept="audio/*"
                 onChange={(e) => setLogCallRecording(e.target.files?.[0] || null)}
-                className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                className="bg-muted border-border"
                 aria-label="Upload call recording"
               />
               {logCallRecording && (
-                <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
                   <Upload className="h-3 w-3" />
                   {logCallRecording.name}
                 </div>
@@ -1126,10 +1129,10 @@ const CRM = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsLogCallOpen(false)} className="border-slate-200 dark:border-slate-700">
+            <Button variant="outline" onClick={() => setIsLogCallOpen(false)} className="border-border text-foreground hover:bg-muted">
               Cancel
             </Button>
-            <Button onClick={handleLogCallWithRecording} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Button onClick={handleLogCallWithRecording} className="bg-primary hover:bg-primary-hover text-primary-foreground">
               <PhoneCall className="h-4 w-4 mr-2" />
               Log Call
             </Button>
@@ -1139,7 +1142,7 @@ const CRM = () => {
 
       {/* Lead Detail Sheet */}
       <Sheet open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto bg-white dark:bg-slate-900">
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto bg-popover border-l border-border">
           {selectedLead && (() => {
             const user = getUser(selectedLead.assigned_to);
             const property = getProperty(selectedLead.property_id);
@@ -1148,22 +1151,22 @@ const CRM = () => {
 
             return (
               <>
-                <SheetHeader>
-                  <SheetTitle className="flex items-center gap-3 text-slate-900 dark:text-slate-100">
-                    <Avatar className="h-12 w-12">
+                <SheetHeader className="crm-gradient-header -mx-6 -mt-6 px-6 pt-6 pb-4 rounded-t-lg">
+                  <SheetTitle className="flex items-center gap-3 text-white">
+                    <Avatar className="h-12 w-12 ring-2 ring-white/30">
                       <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedLead.id}`} />
-                      <AvatarFallback className="bg-indigo-100 text-indigo-600">
+                      <AvatarFallback className="bg-primary-light text-white">
                         {selectedLead.full_name.split(' ').map(n => n[0]).join('')}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <div>{selectedLead.full_name}</div>
-                      <div className="text-sm text-slate-500 font-normal">
+                      <div className="text-sm text-white/80 font-normal">
                         Lead Score: {selectedLead.lead_score}
                       </div>
                     </div>
                   </SheetTitle>
-                  <SheetDescription className="text-slate-500">
+                  <SheetDescription className="text-white/70">
                     <div className="flex flex-col gap-1">
                       <span><Phone className="inline h-3 w-3 mr-1" />{selectedLead.phone || '—'}</span>
                       <span><Mail className="inline h-3 w-3 mr-1" />{selectedLead.email || '—'}</span>
@@ -1172,15 +1175,15 @@ const CRM = () => {
                   
                   {/* Contact Buttons */}
                   <div className="flex gap-2 pt-4">
-                    <Button variant="outline" size="sm" className="border-slate-200 dark:border-slate-700" onClick={() => handleLogInteraction(selectedLead.id, 'Call')}>
+                    <Button variant="outline" size="sm" className="border-white/30 text-white hover:bg-white/10" onClick={() => handleLogInteraction(selectedLead.id, 'Call')}>
                       <Phone className="h-4 w-4 mr-1" />
                       Call
                     </Button>
-                    <Button variant="outline" size="sm" className="border-slate-200 dark:border-slate-700" onClick={() => handleLogInteraction(selectedLead.id, 'Email')}>
+                    <Button variant="outline" size="sm" className="border-white/30 text-white hover:bg-white/10" onClick={() => handleLogInteraction(selectedLead.id, 'Email')}>
                       <Mail className="h-4 w-4 mr-1" />
                       Email
                     </Button>
-                    <Button variant="outline" size="sm" className="border-slate-200 dark:border-slate-700" onClick={() => handleLogInteraction(selectedLead.id, 'SMS')}>
+                    <Button variant="outline" size="sm" className="border-white/30 text-white hover:bg-white/10" onClick={() => handleLogInteraction(selectedLead.id, 'SMS')}>
                       <MessageSquare className="h-4 w-4 mr-1" />
                       SMS
                     </Button>
@@ -1188,11 +1191,11 @@ const CRM = () => {
                 </SheetHeader>
 
                 <Tabs defaultValue="timeline" className="mt-6">
-                  <TabsList className="w-full bg-slate-100 dark:bg-slate-800">
-                    <TabsTrigger value="timeline" className="flex-1 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700">Timeline</TabsTrigger>
-                    <TabsTrigger value="tasks" className="flex-1 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700">Tasks</TabsTrigger>
-                    <TabsTrigger value="profile" className="flex-1 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700">Profile</TabsTrigger>
-                    <TabsTrigger value="actions" className="flex-1 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700">Actions</TabsTrigger>
+                  <TabsList className="w-full bg-muted">
+                    <TabsTrigger value="timeline" className="flex-1 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary">Timeline</TabsTrigger>
+                    <TabsTrigger value="tasks" className="flex-1 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary">Tasks</TabsTrigger>
+                    <TabsTrigger value="profile" className="flex-1 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary">Profile</TabsTrigger>
+                    <TabsTrigger value="actions" className="flex-1 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary">Actions</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="timeline" className="space-y-4 mt-4">
@@ -1200,10 +1203,10 @@ const CRM = () => {
                       leadInteractions
                         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                         .map((interaction) => (
-                          <Card key={interaction.id} className="border-slate-200 dark:border-slate-700">
+                          <Card key={interaction.id} className="border-border">
                             <CardContent className="p-4">
                               <div className="flex items-start gap-3">
-                                <div className={`mt-1 p-1.5 rounded ${interaction.direction === 'Inbound' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                <div className={`mt-1 p-1.5 rounded ${interaction.direction === 'Inbound' ? 'bg-primary/10 text-primary' : 'bg-status-leased/10 text-status-leased'}`}>
                                   {interaction.type === 'Email' && <Mail className="h-3 w-3" />}
                                   {interaction.type === 'SMS' && <MessageSquare className="h-3 w-3" />}
                                   {interaction.type === 'Call' && <Phone className="h-3 w-3" />}
@@ -1212,18 +1215,18 @@ const CRM = () => {
                                 <div className="flex-1">
                                   <div className="flex items-center justify-between mb-1">
                                     <div className="flex items-center gap-2">
-                                      <Badge variant="outline" className="text-xs border-slate-200 dark:border-slate-700">
+                                      <Badge variant="outline" className="text-xs border-border">
                                         {interaction.type}
                                       </Badge>
-                                      <Badge variant="secondary" className="text-xs bg-slate-100 dark:bg-slate-800">
+                                      <Badge variant="secondary" className="text-xs bg-muted">
                                         {interaction.direction}
                                       </Badge>
                                     </div>
-                                    <span className="text-xs text-slate-500">
+                                    <span className="text-xs text-muted-foreground">
                                       {formatDateTime(interaction.date)}
                                     </span>
                                   </div>
-                                  <p className="text-sm text-slate-700 dark:text-slate-300">{interaction.summary}</p>
+                                  <p className="text-sm text-foreground">{interaction.summary}</p>
                                   
                                   {/* Audio Player for attachments */}
                                   {interaction.attachments && interaction.attachments.length > 0 && interaction.attachments.map((att, idx) => (
@@ -1235,7 +1238,7 @@ const CRM = () => {
                           </Card>
                         ))
                     ) : (
-                      <div className="text-center py-8 text-slate-500">
+                      <div className="text-center py-8 text-muted-foreground">
                         No interactions recorded
                       </div>
                     )}
@@ -1244,20 +1247,21 @@ const CRM = () => {
                   <TabsContent value="tasks" className="space-y-4 mt-4">
                     {leadTasks.length > 0 ? (
                       leadTasks.map((task) => (
-                        <Card key={task.id} className="border-slate-200 dark:border-slate-700">
+                        <Card key={task.id} className="border-border">
                           <CardContent className="p-4">
                             <div className="flex items-center gap-3">
                               <Checkbox 
                                 checked={task.status === 'Completed'}
                                 onCheckedChange={() => handleToggleTask(task.id)}
+                                className="border-primary data-[state=checked]:bg-primary"
                               />
                               <div className="flex-1">
-                                <p className={`text-sm font-medium ${task.status === 'Completed' ? 'line-through text-slate-400' : 'text-slate-900 dark:text-slate-100'}`}>
+                                <p className={`text-sm font-medium ${task.status === 'Completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                                   {task.title}
                                 </p>
-                                <p className="text-xs text-slate-500">Due: {formatDateTime(task.due_at)}</p>
+                                <p className="text-xs text-muted-foreground">Due: {formatDateTime(task.due_at)}</p>
                               </div>
-                              <Badge variant="secondary" className={`text-xs ${task.status === 'Completed' ? 'bg-emerald-100 text-emerald-600' : task.status === 'In Progress' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600'}`}>
+                              <Badge variant="secondary" className={`text-xs ${task.status === 'Completed' ? 'bg-status-leased/15 text-status-leased' : task.status === 'In Progress' ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
                                 {task.status}
                               </Badge>
                             </div>
@@ -1265,78 +1269,78 @@ const CRM = () => {
                         </Card>
                       ))
                     ) : (
-                      <div className="text-center py-8 text-slate-500">
+                      <div className="text-center py-8 text-muted-foreground">
                         No tasks
                       </div>
                     )}
                   </TabsContent>
 
                   <TabsContent value="profile" className="space-y-4 mt-4">
-                    <Card className="border-slate-200 dark:border-slate-700">
+                    <Card className="border-border">
                       <CardHeader>
-                        <CardTitle className="text-base text-slate-900 dark:text-slate-100">Lead Information</CardTitle>
+                        <CardTitle className="text-base text-foreground">Lead Information</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Status:</span>
+                          <span className="text-muted-foreground">Status:</span>
                           <Badge className={`${statusConfig[selectedLead.status].color} text-white`}>
                             {selectedLead.status}
                           </Badge>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Priority:</span>
+                          <span className="text-muted-foreground">Priority:</span>
                           <Badge className={`${priorityConfig[selectedLead.priority].bgColor} ${priorityConfig[selectedLead.priority].color} border-0`}>
                             {selectedLead.priority}
                           </Badge>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Sentiment:</span>
+                          <span className="text-muted-foreground">Sentiment:</span>
                           <div className="flex items-center gap-1.5">
                             <div className={`w-2 h-2 rounded-full ${sentimentConfig[selectedLead.sentiment].dotColor}`} />
                             <span className={sentimentConfig[selectedLead.sentiment].color}>{selectedLead.sentiment}</span>
                           </div>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-500">Source:</span>
+                          <span className="text-muted-foreground">Source:</span>
                           <div className="text-right">
                             <SourceBadge source={selectedLead.source} sourceDetail={selectedLead.source_detail} />
                             {selectedLead.source_detail && (
-                              <p className="text-xs text-slate-400 mt-1">({selectedLead.source_detail})</p>
+                              <p className="text-xs text-muted-foreground mt-1">({selectedLead.source_detail})</p>
                             )}
                           </div>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Lead Score:</span>
-                          <span className="font-semibold text-slate-900 dark:text-slate-100">{selectedLead.lead_score}/100</span>
+                          <span className="text-muted-foreground">Lead Score:</span>
+                          <span className="font-semibold text-foreground">{selectedLead.lead_score}/100</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Rent Range:</span>
-                          <span className="font-medium text-slate-900 dark:text-slate-100">{selectedLead.rent_range}</span>
+                          <span className="text-muted-foreground">Rent Range:</span>
+                          <span className="font-medium text-foreground">{selectedLead.rent_range}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Move-in Date:</span>
-                          <span className="font-medium text-slate-900 dark:text-slate-100">{formatDate(selectedLead.move_in)}</span>
+                          <span className="text-muted-foreground">Move-in Date:</span>
+                          <span className="font-medium text-foreground">{formatDate(selectedLead.move_in)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Property:</span>
-                          <span className="font-medium text-indigo-600">{property?.name || 'Unknown'}</span>
+                          <span className="text-muted-foreground">Property:</span>
+                          <span className="font-medium text-primary">{property?.name || 'Unknown'}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-500">Assigned To:</span>
+                          <span className="text-muted-foreground">Assigned To:</span>
                           <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
+                            <Avatar className="h-6 w-6 ring-2 ring-secondary/30">
                               <AvatarImage src={user?.avatar} />
-                              <AvatarFallback className="text-xs bg-slate-200 dark:bg-slate-700">
+                              <AvatarFallback className="text-xs bg-muted text-muted-foreground">
                                 {user?.name?.split(' ').map(n => n[0]).join('') || '?'}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="font-medium text-slate-900 dark:text-slate-100">{user?.name || 'Unassigned'}</span>
+                            <span className="font-medium text-foreground">{user?.name || 'Unassigned'}</span>
                           </div>
                         </div>
                         {selectedLead.notes && (
-                          <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                            <span className="text-slate-500">Notes:</span>
-                            <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">{selectedLead.notes}</p>
+                          <div className="pt-2 border-t border-border">
+                            <span className="text-muted-foreground">Notes:</span>
+                            <p className="mt-1 text-sm text-foreground">{selectedLead.notes}</p>
                           </div>
                         )}
                       </CardContent>
@@ -1345,16 +1349,16 @@ const CRM = () => {
 
                   <TabsContent value="actions" className="space-y-4 mt-4">
                     {/* Change Status */}
-                    <Card className="border-slate-200 dark:border-slate-700">
+                    <Card className="border-border">
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm text-slate-700 dark:text-slate-300">Change Status</CardTitle>
+                        <CardTitle className="text-sm text-foreground">Change Status</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <Select value={selectedLead.status} onValueChange={(val) => handleStatusChange(selectedLead.id, val as LeadStatus)}>
-                          <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                          <SelectTrigger className="w-full bg-muted border-border">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                          <SelectContent className="bg-popover border-border">
                             {statusOptions.map(status => (
                               <SelectItem key={status} value={status}>{status}</SelectItem>
                             ))}
@@ -1364,9 +1368,9 @@ const CRM = () => {
                     </Card>
 
                     {/* Schedule Tour */}
-                    <Card className="border-slate-200 dark:border-slate-700">
+                    <Card className="border-border">
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm text-slate-700 dark:text-slate-300">Schedule Tour</CardTitle>
+                        <CardTitle className="text-sm text-foreground">Schedule Tour</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         <Popover>
@@ -1374,7 +1378,7 @@ const CRM = () => {
                             <Button
                               variant="outline"
                               className={cn(
-                                "w-full justify-start text-left font-normal border-slate-200 dark:border-slate-700",
+                                "w-full justify-start text-left font-normal border-border hover:bg-muted",
                                 !tourDate && "text-muted-foreground"
                               )}
                             >
@@ -1382,7 +1386,7 @@ const CRM = () => {
                               {tourDate ? format(tourDate, 'PPP') : <span>Pick a date</span>}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700" align="start">
+                          <PopoverContent className="w-auto p-0 bg-popover border-border" align="start">
                             <Calendar
                               mode="single"
                               selected={tourDate}
@@ -1396,9 +1400,9 @@ const CRM = () => {
                           type="time"
                           value={tourTime}
                           onChange={(e) => setTourTime(e.target.value)}
-                          className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                          className="bg-muted border-border"
                         />
-                        <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => handleScheduleTour(selectedLead.id)}>
+                        <Button className="w-full bg-primary hover:bg-primary-hover text-primary-foreground" onClick={() => handleScheduleTour(selectedLead.id)}>
                           <CalendarIcon className="h-4 w-4 mr-2" />
                           Schedule Tour
                         </Button>
@@ -1406,24 +1410,24 @@ const CRM = () => {
                     </Card>
 
                     {/* Log Interactions */}
-                    <Card className="border-slate-200 dark:border-slate-700">
+                    <Card className="border-border">
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm text-slate-700 dark:text-slate-300">Log Interaction</CardTitle>
+                        <CardTitle className="text-sm text-foreground">Log Interaction</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-2">
                         <div className="flex gap-2">
-                          <Button variant="outline" className="flex-1 border-slate-200 dark:border-slate-700" onClick={() => handleLogInteraction(selectedLead.id, 'Email')}>
+                          <Button variant="outline" className="flex-1 border-border hover:bg-muted" onClick={() => handleLogInteraction(selectedLead.id, 'Email')}>
                             <Mail className="h-4 w-4 mr-1" />
                             Email
                           </Button>
-                          <Button variant="outline" className="flex-1 border-slate-200 dark:border-slate-700" onClick={() => handleLogInteraction(selectedLead.id, 'SMS')}>
+                          <Button variant="outline" className="flex-1 border-border hover:bg-muted" onClick={() => handleLogInteraction(selectedLead.id, 'SMS')}>
                             <MessageSquare className="h-4 w-4 mr-1" />
                             SMS
                           </Button>
                         </div>
                         <Button 
                           variant="outline" 
-                          className="w-full border-slate-200 dark:border-slate-700" 
+                          className="w-full border-border hover:bg-muted" 
                           onClick={() => setIsLogCallOpen(true)}
                         >
                           <Mic className="h-4 w-4 mr-1" />

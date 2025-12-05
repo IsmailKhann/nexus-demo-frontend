@@ -25,6 +25,10 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          hover: "hsl(var(--primary-hover))",
+          dark: "hsl(var(--primary-dark))",
+          light: "hsl(var(--primary-light))",
+          glow: "hsl(var(--primary-glow))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -59,6 +63,23 @@ export default {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
+        },
+        // CRM specific colors
+        kanban: {
+          column: "hsl(var(--kanban-column))",
+        },
+        status: {
+          new: "hsl(var(--status-new))",
+          contacted: "hsl(var(--status-contacted))",
+          tour: "hsl(var(--status-tour))",
+          application: "hsl(var(--status-application))",
+          leased: "hsl(var(--status-leased))",
+          lost: "hsl(var(--status-lost))",
+        },
+        priority: {
+          high: "hsl(var(--priority-high))",
+          medium: "hsl(var(--priority-medium))",
+          low: "hsl(var(--priority-low))",
         },
       },
       borderRadius: {
