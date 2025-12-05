@@ -19,6 +19,7 @@ import Integrations from "./pages/Integrations";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Inbox from "./pages/Inbox";
+import Properties from "./pages/Properties";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/inbox" element={<Inbox />} />
+            <Route path="/properties" element={<Properties />} />
             <Route path="/crm" element={<CRM />} />
             <Route path="/marketing" element={<Marketing />} />
             <Route

@@ -55,11 +55,12 @@ import { Calendar } from '@/components/ui/calendar';
 import { 
   Search, Phone, Mail, MessageSquare, Calendar as CalendarIcon, User, TrendingUp, 
   LayoutGrid, List, Star, ChevronRight, Users, Target, Eye, CheckCircle2,
-  Globe, MapPin, PhoneCall, UserPlus, Play, Pause, Download, Mic, Upload, AlertCircle
+  Globe, MapPin, PhoneCall, UserPlus, Play, Pause, Download, Mic, Upload, AlertCircle, Building2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import PropertyProfile, { PropertyProfileData } from '@/components/PropertyProfile';
 
 // =============== HARDCODED DATA ===============
 const users = [
@@ -70,21 +71,89 @@ const users = [
   { id: "USR_006", name: "Louis Litt", avatar: "https://i.pravatar.cc/150?u=6" }
 ];
 
-const properties = [
-  { id: "PROP_001", name: "Sunset Towers" },
-  { id: "PROP_002", name: "Downtown Lofts" },
-  { id: "PROP_003", name: "Riverside Garden" },
-  { id: "PROP_005", name: "Oceanview Estates" }
+// Extended properties with full details
+const properties: PropertyProfileData[] = [
+  {
+    id: "PROP_001",
+    name: "Sunset Towers",
+    address_line1: "123 Sunset Blvd",
+    city: "Los Angeles",
+    state: "CA",
+    postal_code: "90028",
+    images: [
+      "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800",
+      "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800"
+    ],
+    description: "Luxury high-rise with rooftop pool and concierge service. Premium amenities including fitness center, spa, and 24/7 security.",
+    units_count: 120,
+    vacant_count: 6,
+    avg_rent: 3200,
+    timezone: "PST",
+    created_at: "2024-01-01"
+  },
+  {
+    id: "PROP_002",
+    name: "Downtown Lofts",
+    address_line1: "450 Main St",
+    city: "Seattle",
+    state: "WA",
+    postal_code: "98104",
+    images: [
+      "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800"
+    ],
+    description: "Converted industrial lofts in the heart of downtown. High ceilings, exposed brick, and modern finishes.",
+    units_count: 80,
+    vacant_count: 10,
+    avg_rent: 2100,
+    timezone: "PST",
+    created_at: "2024-01-15"
+  },
+  {
+    id: "PROP_003",
+    name: "Riverside Garden",
+    address_line1: "789 River Road",
+    city: "Portland",
+    state: "OR",
+    postal_code: "97201",
+    images: [
+      "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800"
+    ],
+    description: "Peaceful garden-style apartments along the river. Pet-friendly with walking trails and community garden.",
+    units_count: 60,
+    vacant_count: 4,
+    avg_rent: 1500,
+    timezone: "PST",
+    created_at: "2024-02-01"
+  },
+  {
+    id: "PROP_005",
+    name: "Oceanview Estates",
+    address_line1: "1 Ocean Drive",
+    city: "Miami",
+    state: "FL",
+    postal_code: "33139",
+    images: [
+      "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800",
+      "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800"
+    ],
+    description: "Ultra-luxury beachfront condos with panoramic ocean views. Private beach access, valet parking, and concierge services.",
+    units_count: 45,
+    vacant_count: 2,
+    avg_rent: 12000,
+    timezone: "EST",
+    created_at: "2024-03-01"
+  }
 ];
 
+// Leads with properties_interested for multi-property support
 const initialLeads = [
-  { id: "LEA_001", full_name: "John Smith", status: "Contacted", priority: "High", lead_score: 85, sentiment: "Positive", property_id: "PROP_001", assigned_to: "USR_001", rent_range: "$3k-$3.5k", move_in: "2026-01-15", phone: "555-0100", email: "john.smith@example.com", notes: "Has a golden retriever", next_task_date: "2025-12-03 10:00", source: "ILS", source_detail: "zillow" },
-  { id: "LEA_002", full_name: "Emily Davis", status: "Tour Scheduled", priority: "High", lead_score: 92, sentiment: "High Intent", property_id: "PROP_002", assigned_to: "USR_002", rent_range: "$1.8k-$2.2k", move_in: "2026-02-01", phone: "555-0101", email: "emily.d@example.com", notes: "Looking for quiet unit", next_task_date: "2025-12-05 13:00", source: "Website", source_detail: "contact form" },
-  { id: "LEA_003", full_name: "Robert Ford", status: "Lost", priority: "Low", lead_score: 20, sentiment: "Negative", property_id: "PROP_001", assigned_to: "USR_001", rent_range: "$4k-$5k", move_in: "2025-11-30", phone: "555-0102", email: "r.ford@example.com", notes: "Price too high", next_task_date: null, source: "Craigslist", source_detail: "craigslist ad #12345" },
-  { id: "LEA_004", full_name: "Michael Chen", status: "Application Pending", priority: "High", lead_score: 95, sentiment: "Neutral", property_id: "PROP_003", assigned_to: "USR_005", rent_range: "$1.4k-$1.6k", move_in: "2025-12-20", phone: "555-0103", email: "m.chen@example.com", notes: "Docs submitted", next_task_date: null, source: "Referral", source_detail: "referred by John Smith" },
-  { id: "LEA_006", full_name: "Bruce Wayne", status: "Leased", priority: "High", lead_score: 99, sentiment: "Positive", property_id: "PROP_005", assigned_to: "USR_003", rent_range: "$12k-$15k", move_in: "2025-12-15", phone: "555-0105", email: "b.wayne@example.com", notes: "VIP client", next_task_date: null, source: "Call", source_detail: "inbound call from +1-555-0105" },
-  { id: "LEA_007", full_name: "Clark Kent", status: "Contacted", priority: "Medium", lead_score: 45, sentiment: "Neutral", property_id: "PROP_002", assigned_to: "USR_006", rent_range: "$2k-$2.5k", move_in: "2026-03-01", phone: "555-0106", email: "c.kent@example.com", notes: "Reporter discount?", next_task_date: null, source: "Email", source_detail: "email subject: availability" },
-  { id: "LEA_010", full_name: "Arthur Curry", status: "New", priority: "Medium", lead_score: 60, sentiment: "Positive", property_id: "PROP_005", assigned_to: "USR_003", rent_range: "$8k-$9k", move_in: "2026-02-15", phone: "555-0109", email: "a.curry@example.com", notes: "Needs ocean view", next_task_date: null, source: "Walk-In", source_detail: "visited property on 12/01" }
+  { id: "LEA_001", full_name: "John Smith", status: "Contacted", priority: "High", lead_score: 85, sentiment: "Positive", property_id: "PROP_001", properties_interested: ["PROP_001", "PROP_002"], assigned_to: "USR_001", rent_range: "$3k-$3.5k", move_in: "2026-01-15", phone: "555-0100", email: "john.smith@example.com", notes: "Has a golden retriever", next_task_date: "2025-12-03 10:00", source: "ILS", source_detail: "zillow" },
+  { id: "LEA_002", full_name: "Emily Davis", status: "Tour Scheduled", priority: "High", lead_score: 92, sentiment: "High Intent", property_id: "PROP_002", properties_interested: ["PROP_002", "PROP_001", "PROP_003"], assigned_to: "USR_002", rent_range: "$1.8k-$2.2k", move_in: "2026-02-01", phone: "555-0101", email: "emily.d@example.com", notes: "Looking for quiet unit", next_task_date: "2025-12-05 13:00", source: "Website", source_detail: "contact form" },
+  { id: "LEA_003", full_name: "Robert Ford", status: "Lost", priority: "Low", lead_score: 20, sentiment: "Negative", property_id: "PROP_001", properties_interested: ["PROP_001"], assigned_to: "USR_001", rent_range: "$4k-$5k", move_in: "2025-11-30", phone: "555-0102", email: "r.ford@example.com", notes: "Price too high", next_task_date: null, source: "Craigslist", source_detail: "craigslist ad #12345" },
+  { id: "LEA_004", full_name: "Michael Chen", status: "Application Pending", priority: "High", lead_score: 95, sentiment: "Neutral", property_id: "PROP_003", properties_interested: ["PROP_003"], assigned_to: "USR_005", rent_range: "$1.4k-$1.6k", move_in: "2025-12-20", phone: "555-0103", email: "m.chen@example.com", notes: "Docs submitted", next_task_date: null, source: "Referral", source_detail: "referred by John Smith" },
+  { id: "LEA_006", full_name: "Bruce Wayne", status: "Leased", priority: "High", lead_score: 99, sentiment: "Positive", property_id: "PROP_005", properties_interested: ["PROP_005", "PROP_001"], assigned_to: "USR_003", rent_range: "$12k-$15k", move_in: "2025-12-15", phone: "555-0105", email: "b.wayne@example.com", notes: "VIP client", next_task_date: null, source: "Call", source_detail: "inbound call from +1-555-0105" },
+  { id: "LEA_007", full_name: "Clark Kent", status: "Contacted", priority: "Medium", lead_score: 45, sentiment: "Neutral", property_id: "PROP_002", properties_interested: ["PROP_002"], assigned_to: "USR_006", rent_range: "$2k-$2.5k", move_in: "2026-03-01", phone: "555-0106", email: "c.kent@example.com", notes: "Reporter discount?", next_task_date: null, source: "Email", source_detail: "email subject: availability" },
+  { id: "LEA_010", full_name: "Arthur Curry", status: "New", priority: "Medium", lead_score: 60, sentiment: "Positive", property_id: "PROP_005", properties_interested: ["PROP_005", "PROP_003", "PROP_002"], assigned_to: "USR_003", rent_range: "$8k-$9k", move_in: "2026-02-15", phone: "555-0109", email: "a.curry@example.com", notes: "Needs ocean view", next_task_date: null, source: "Walk-In", source_detail: "visited property on 12/01" }
 ];
 
 const initialInteractions = [
@@ -126,6 +195,7 @@ interface Lead {
   lead_score: number;
   sentiment: Sentiment;
   property_id: string;
+  properties_interested: string[];
   assigned_to: string;
   rent_range: string;
   move_in: string;
@@ -195,7 +265,18 @@ const sourceConfig: Record<LeadSource, { icon: typeof Globe; color: string }> = 
 
 // =============== HELPER FUNCTIONS ===============
 const getUser = (userId: string) => users.find(u => u.id === userId);
-const getProperty = (propertyId: string) => properties.find(p => p.id === propertyId);
+const getProperty = (propertyId: string): PropertyProfileData | undefined => properties.find(p => p.id === propertyId);
+
+// Get primary property (first in properties_interested or fallback to property_id)
+const getPrimaryPropertyId = (lead: Lead): string => {
+  return lead.properties_interested?.[0] || lead.property_id;
+};
+
+// Get all interested properties for a lead
+const getInterestedProperties = (lead: Lead): PropertyProfileData[] => {
+  const ids = lead.properties_interested?.length ? lead.properties_interested : [lead.property_id];
+  return ids.map(id => getProperty(id)).filter(Boolean) as PropertyProfileData[];
+};
 
 const getScoreColor = (score: number) => {
   if (score > 80) return 'bg-status-leased text-white';
@@ -328,6 +409,7 @@ const CRM = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
+  const [propertyFilter, setPropertyFilter] = useState<string>('all');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
@@ -335,7 +417,24 @@ const CRM = () => {
   const [tourTime, setTourTime] = useState('10:00');
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [isLogCallOpen, setIsLogCallOpen] = useState(false);
+  const [selectedPropertyProfile, setSelectedPropertyProfile] = useState<PropertyProfileData | null>(null);
+  const [isPropertyProfileOpen, setIsPropertyProfileOpen] = useState(false);
   const { toast } = useToast();
+
+  const openPropertyProfile = (propertyId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const property = getProperty(propertyId);
+    if (property) {
+      setSelectedPropertyProfile(property);
+      setIsPropertyProfileOpen(true);
+    }
+  };
+
+  const handleCreateLeadFromProperty = (propertyId: string) => {
+    setIsPropertyProfileOpen(false);
+    setNewLead(prev => ({ ...prev, property_id: propertyId }));
+    setIsAddLeadOpen(true);
+  };
 
   // Add Lead form state
   const [newLead, setNewLead] = useState({
@@ -503,15 +602,17 @@ const CRM = () => {
     }
 
     const leadId = `LEA_${Date.now()}`;
+    const propertyId = newLead.property_id || 'PROP_001';
     const newLeadData: Lead = {
       id: leadId,
       full_name: newLead.full_name,
       status: 'New',
       priority: newLead.priority,
-      lead_score: 50, // default score
+      lead_score: 50,
       sentiment: 'Neutral',
-      property_id: newLead.property_id || 'PROP_001',
-      assigned_to: 'USR_001', // current user
+      property_id: propertyId,
+      properties_interested: [propertyId],
+      assigned_to: 'USR_001',
       rent_range: newLead.rent_range || '—',
       move_in: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
       phone: newLead.phone || '—',
