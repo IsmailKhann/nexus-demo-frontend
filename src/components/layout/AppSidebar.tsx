@@ -13,6 +13,7 @@ import {
   Brain,
   UserCog,
   Inbox,
+  Home,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -33,6 +34,12 @@ const navigation = [
     items: [
       { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
       { title: 'Inbox', url: '/inbox', icon: Inbox },
+    ],
+  },
+  {
+    title: 'Property Management',
+    items: [
+      { title: 'Properties', url: '/properties', icon: Home },
     ],
   },
   {
