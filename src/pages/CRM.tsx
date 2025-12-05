@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,111 +21,157 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { fetchLeads, updateLeadStatus } from '@/lib/mockApi';
-import type { Lead } from '@/types';
-import { Search, Phone, Mail, MessageSquare, Calendar, User, TrendingUp } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { 
+  Search, Phone, Mail, MessageSquare, Calendar, User, TrendingUp, 
+  LayoutGrid, List, Star, ArrowUpDown, ChevronRight, Users, Target
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const statusConfig: Record<Lead['status'], { label: string; color: string }> = {
-  new: { label: 'New', color: 'bg-blue-500' },
-  contacted: { label: 'Contacted', color: 'bg-yellow-500' },
-  tour_scheduled: { label: 'Tour Scheduled', color: 'bg-purple-500' },
-  applied: { label: 'Applied', color: 'bg-indigo-500' },
-  leased: { label: 'Leased', color: 'bg-green-500' },
-  lost: { label: 'Lost', color: 'bg-gray-500' },
+// =============== HARDCODED DATA ===============
+const users = [
+  { id: "USR_001", name: "Sarah Jenkins", avatar: "https://i.pravatar.cc/150?u=1" },
+  { id: "USR_002", name: "Mike Ross", avatar: "https://i.pravatar.cc/150?u=2" },
+  { id: "USR_003", name: "Jessica Pearson", avatar: "https://i.pravatar.cc/150?u=3" },
+  { id: "USR_005", name: "David Lee", avatar: "https://i.pravatar.cc/150?u=5" },
+  { id: "USR_006", name: "Louis Litt", avatar: "https://i.pravatar.cc/150?u=6" }
+];
+
+const properties = [
+  { id: "PROP_001", name: "Sunset Towers" },
+  { id: "PROP_002", name: "Downtown Lofts" },
+  { id: "PROP_003", name: "Riverside Garden" },
+  { id: "PROP_005", name: "Oceanview Estates" }
+];
+
+const initialLeads = [
+  { id: "LEA_001", full_name: "John Smith", status: "Contacted", priority: "High", lead_score: 85, sentiment: "Positive", property_id: "PROP_001", assigned_to: "USR_001", rent_range: "$3k-$3.5k", move_in: "2026-01-15" },
+  { id: "LEA_002", full_name: "Emily Davis", status: "Tour Scheduled", priority: "High", lead_score: 92, sentiment: "High Intent", property_id: "PROP_002", assigned_to: "USR_002", rent_range: "$1.8k-$2.2k", move_in: "2026-02-01" },
+  { id: "LEA_003", full_name: "Robert Ford", status: "Lost", priority: "Low", lead_score: 20, sentiment: "Negative", property_id: "PROP_001", assigned_to: "USR_001", rent_range: "$4k-$5k", move_in: "2025-11-30" },
+  { id: "LEA_004", full_name: "Michael Chen", status: "Application Pending", priority: "High", lead_score: 95, sentiment: "Neutral", property_id: "PROP_003", assigned_to: "USR_005", rent_range: "$1.4k-$1.6k", move_in: "2025-12-20" },
+  { id: "LEA_006", full_name: "Bruce Wayne", status: "Leased", priority: "High", lead_score: 99, sentiment: "Positive", property_id: "PROP_005", assigned_to: "USR_003", rent_range: "$12k-$15k", move_in: "2025-12-15" },
+  { id: "LEA_007", full_name: "Clark Kent", status: "Contacted", priority: "Medium", lead_score: 45, sentiment: "Neutral", property_id: "PROP_002", assigned_to: "USR_006", rent_range: "$2k-$2.5k", move_in: "2026-03-01" },
+  { id: "LEA_010", full_name: "Arthur Curry", status: "New", priority: "Medium", lead_score: 60, sentiment: "Positive", property_id: "PROP_005", assigned_to: "USR_003", rent_range: "$8k-$9k", move_in: "2026-02-15" }
+];
+
+const interactions = [
+  { id: "INT_001", lead_id: "LEA_001", type: "Email", direction: "Inbound", summary: "Inquired about 1BHK", date: "2025-12-01 09:00" },
+  { id: "INT_002", lead_id: "LEA_001", type: "Email", direction: "Outbound", summary: "Sent brochure", date: "2025-12-01 09:15" },
+  { id: "INT_004", lead_id: "LEA_002", type: "SMS", direction: "Outbound", summary: "Confirmed tour for Friday", date: "2025-12-02 14:30" }
+];
+
+const tasks: any[] = [];
+
+// =============== TYPES ===============
+type LeadStatus = 'New' | 'Contacted' | 'Tour Scheduled' | 'Application Pending' | 'Leased' | 'Lost';
+type Priority = 'High' | 'Medium' | 'Low';
+type Sentiment = 'Positive' | 'Neutral' | 'Negative' | 'High Intent';
+
+interface Lead {
+  id: string;
+  full_name: string;
+  status: LeadStatus;
+  priority: Priority;
+  lead_score: number;
+  sentiment: Sentiment;
+  property_id: string;
+  assigned_to: string;
+  rent_range: string;
+  move_in: string;
+}
+
+// =============== CONFIGS ===============
+const statusConfig: Record<LeadStatus, { label: string; color: string; bgColor: string }> = {
+  'New': { label: 'New', color: 'bg-blue-500', bgColor: 'bg-blue-500/10' },
+  'Contacted': { label: 'Contacted', color: 'bg-amber-500', bgColor: 'bg-amber-500/10' },
+  'Tour Scheduled': { label: 'Tour Scheduled', color: 'bg-purple-500', bgColor: 'bg-purple-500/10' },
+  'Application Pending': { label: 'Application Pending', color: 'bg-indigo-500', bgColor: 'bg-indigo-500/10' },
+  'Leased': { label: 'Leased', color: 'bg-emerald-500', bgColor: 'bg-emerald-500/10' },
+  'Lost': { label: 'Lost', color: 'bg-slate-400', bgColor: 'bg-slate-400/10' },
 };
 
-const statusOrder: Lead['status'][] = ['new', 'contacted', 'tour_scheduled', 'applied', 'leased', 'lost'];
+const statusOrder: LeadStatus[] = ['New', 'Contacted', 'Tour Scheduled', 'Application Pending', 'Leased', 'Lost'];
 
-const sourceIcons: Record<Lead['source'], typeof Phone> = {
-  phone: Phone,
-  email: Mail,
-  sms: MessageSquare,
-  website: TrendingUp,
-  ils: TrendingUp,
-  referral: User,
-  walk_in: User,
+const priorityConfig: Record<Priority, { color: string; bgColor: string }> = {
+  'High': { color: 'text-red-600', bgColor: 'bg-red-100 dark:bg-red-900/30' },
+  'Medium': { color: 'text-amber-600', bgColor: 'bg-amber-100 dark:bg-amber-900/30' },
+  'Low': { color: 'text-slate-500', bgColor: 'bg-slate-100 dark:bg-slate-700/30' },
+};
+
+const sentimentConfig: Record<Sentiment, { color: string; dotColor: string }> = {
+  'Positive': { color: 'text-emerald-600', dotColor: 'bg-emerald-500' },
+  'Neutral': { color: 'text-amber-600', dotColor: 'bg-amber-500' },
+  'Negative': { color: 'text-red-600', dotColor: 'bg-red-500' },
+  'High Intent': { color: 'text-emerald-600', dotColor: 'bg-emerald-500' },
+};
+
+// =============== HELPER FUNCTIONS ===============
+const getUser = (userId: string) => users.find(u => u.id === userId);
+const getProperty = (propertyId: string) => properties.find(p => p.id === propertyId);
+const getLeadInteractions = (leadId: string) => interactions.filter(i => i.lead_id === leadId);
+const getLeadTasks = (leadId: string) => tasks.filter(t => t.lead_id === leadId);
+
+const getScoreColor = (score: number) => {
+  if (score > 80) return 'bg-emerald-500 text-white';
+  if (score >= 50) return 'bg-amber-500 text-white';
+  return 'bg-red-500 text-white';
 };
 
 const CRM = () => {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [filteredLeads, setFilteredLeads] = useState<Lead[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [leads, setLeads] = useState<Lead[]>(initialLeads as Lead[]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadLeads();
-  }, []);
+  // Filtered leads
+  const filteredLeads = useMemo(() => {
+    return leads.filter(lead => {
+      const matchesSearch = lead.full_name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
+      const matchesPriority = priorityFilter === 'all' || lead.priority === priorityFilter;
+      return matchesSearch && matchesStatus && matchesPriority;
+    });
+  }, [leads, searchQuery, statusFilter, priorityFilter]);
 
-  useEffect(() => {
-    filterLeads();
-  }, [searchQuery, leads]);
+  // Stats calculations
+  const stats = useMemo(() => {
+    const totalActive = leads.length;
+    const highPriority = leads.filter(l => l.priority === 'High').length;
+    const toursScheduled = leads.filter(l => l.status === 'Tour Scheduled').length;
+    const avgScore = leads.length > 0 
+      ? Math.round(leads.reduce((acc, l) => acc + l.lead_score, 0) / leads.length) 
+      : 0;
+    return { totalActive, highPriority, toursScheduled, avgScore };
+  }, [leads]);
 
-  const loadLeads = async () => {
-    try {
-      const data = await fetchLeads();
-      setLeads(data);
-      setFilteredLeads(data);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load leads',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const filterLeads = () => {
-    let filtered = [...leads];
-
-    if (searchQuery) {
-      filtered = filtered.filter((lead) =>
-        lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        lead.email.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    setFilteredLeads(filtered);
+  const getLeadsByStatus = (status: LeadStatus) => {
+    return filteredLeads.filter(lead => lead.status === status);
   };
 
   const onDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
-
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
-    const newStatus = destination.droppableId as Lead['status'];
-    handleStatusChange(draggableId, newStatus);
-  };
-
-  const getLeadsByStatus = (status: Lead['status']) => {
-    return filteredLeads.filter((lead) => lead.status === status);
-  };
-
-  const handleStatusChange = async (leadId: string, newStatus: Lead['status']) => {
-    try {
-      await updateLeadStatus(leadId, newStatus);
-      setLeads((prev) =>
-        prev.map((lead) =>
-          lead.id === leadId ? { ...lead, status: newStatus } : lead
-        )
-      );
-      toast({
-        title: 'Status updated',
-        description: 'Lead status has been updated successfully',
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update lead status',
-        variant: 'destructive',
-      });
-    }
+    const newStatus = destination.droppableId as LeadStatus;
+    setLeads(prev => prev.map(lead => 
+      lead.id === draggableId ? { ...lead, status: newStatus } : lead
+    ));
+    toast({
+      title: 'Status updated',
+      description: `Lead moved to ${newStatus}`,
+    });
   };
 
   const openLeadDetail = (lead: Lead) => {
@@ -135,23 +181,101 @@ const CRM = () => {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const getSourceIcon = (source: Lead['source']) => {
-    const Icon = sourceIcons[source];
-    return <Icon className="h-4 w-4" />;
+  // Lead Card Component
+  const LeadCard = ({ lead, index }: { lead: Lead; index: number }) => {
+    const user = getUser(lead.assigned_to);
+    const property = getProperty(lead.property_id);
+    const leadInteractions = getLeadInteractions(lead.id);
+    const inboundCount = leadInteractions.filter(i => i.direction === 'Inbound').length;
+    const outboundCount = leadInteractions.filter(i => i.direction === 'Outbound').length;
+
+    return (
+      <Draggable key={lead.id} draggableId={lead.id} index={index}>
+        {(provided, snapshot) => (
+          <Card
+            ref={provided.innerRef}
+            {...provided.draggableProps}
+            {...provided.dragHandleProps}
+            tabIndex={0}
+            className={`cursor-pointer hover:shadow-md transition-all border-slate-200 dark:border-slate-700 ${
+              snapshot.isDragging ? 'shadow-lg ring-2 ring-indigo-500' : ''
+            }`}
+            onClick={() => openLeadDetail(lead)}
+            onKeyDown={(e) => e.key === 'Enter' && openLeadDetail(lead)}
+          >
+            <CardContent className="p-4 space-y-3">
+              {/* Header */}
+              <div className="flex items-start justify-between">
+                <div>
+                  <h4 className="font-semibold text-sm">{lead.full_name}</h4>
+                  <p className="text-xs text-muted-foreground">{lead.rent_range}</p>
+                </div>
+                <Badge className={`text-xs ${priorityConfig[lead.priority].bgColor} ${priorityConfig[lead.priority].color} border-0`}>
+                  {lead.priority}
+                </Badge>
+              </div>
+
+              {/* Sentiment */}
+              <div className="flex items-center gap-1.5">
+                {lead.sentiment === 'High Intent' ? (
+                  <Star className="h-3 w-3 text-emerald-500 fill-emerald-500" />
+                ) : (
+                  <div className={`w-2 h-2 rounded-full ${sentimentConfig[lead.sentiment].dotColor}`} />
+                )}
+                <span className={`text-xs ${sentimentConfig[lead.sentiment].color}`}>
+                  {lead.sentiment}
+                </span>
+              </div>
+
+              {/* Property */}
+              <div className="text-xs text-muted-foreground">
+                {property?.name || 'Unknown Property'}
+              </div>
+
+              {/* Interactions count */}
+              {leadInteractions.length > 0 && (
+                <div className="flex gap-2 text-xs text-muted-foreground">
+                  {inboundCount > 0 && <span>↓{inboundCount} in</span>}
+                  {outboundCount > 0 && <span>↑{outboundCount} out</span>}
+                </div>
+              )}
+
+              {/* Footer */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-6 w-6">
+                    <AvatarImage src={user?.avatar} />
+                    <AvatarFallback className="text-xs bg-slate-200 dark:bg-slate-700">
+                      {user?.name?.split(' ').map(n => n[0]).join('') || '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-xs text-muted-foreground truncate max-w-[80px]">
+                    {user?.name || 'Unassigned'}
+                  </span>
+                </div>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${getScoreColor(lead.lead_score)}`}>
+                  {lead.lead_score}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </Draggable>
+    );
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto animate-fade-in">
+    <div className="p-6 space-y-6 max-w-full mx-auto animate-fade-in bg-slate-50 dark:bg-slate-900 min-h-screen">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">CRM & Leads</h1>
-          <p className="text-muted-foreground">Omni-channel lead management and tracking</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">CRM & Leads</h1>
+          <p className="text-slate-500 dark:text-slate-400">Omni-channel lead management and tracking</p>
         </div>
-        <Button className="nexus-gradient-primary text-white">
+        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
           <User className="h-4 w-4 mr-2" />
           Add Lead
         </Button>
@@ -159,55 +283,107 @@ const CRM = () => {
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+        <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
           <CardHeader className="pb-2">
-            <CardDescription>Total Leads</CardDescription>
-            <CardTitle className="text-3xl">{leads.length}</CardTitle>
+            <CardDescription className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-indigo-500" />
+              Total Active Leads
+            </CardDescription>
+            <CardTitle className="text-3xl text-slate-900 dark:text-slate-100">{stats.totalActive}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
           <CardHeader className="pb-2">
-            <CardDescription>New This Week</CardDescription>
-            <CardTitle className="text-3xl">{leads.filter(l => l.status === 'new').length}</CardTitle>
+            <CardDescription className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-red-500" />
+              High Priority
+            </CardDescription>
+            <CardTitle className="text-3xl text-slate-900 dark:text-slate-100">{stats.highPriority}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
           <CardHeader className="pb-2">
-            <CardDescription>Tours Scheduled</CardDescription>
-            <CardTitle className="text-3xl">{leads.filter(l => l.status === 'tour_scheduled').length}</CardTitle>
+            <CardDescription className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-purple-500" />
+              Tours Scheduled
+            </CardDescription>
+            <CardTitle className="text-3xl text-slate-900 dark:text-slate-100">{stats.toursScheduled}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
           <CardHeader className="pb-2">
-            <CardDescription>Conversion Rate</CardDescription>
-            <CardTitle className="text-3xl">
-              {((leads.filter(l => l.status === 'leased').length / leads.length) * 100).toFixed(1)}%
-            </CardTitle>
+            <CardDescription className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
+              Avg Lead Score
+            </CardDescription>
+            <CardTitle className="text-3xl text-slate-900 dark:text-slate-100">{stats.avgScore}</CardTitle>
           </CardHeader>
         </Card>
       </div>
 
-      {/* Search */}
-      <Card>
+      {/* Filters & View Toggle */}
+      <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
         <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search leads by name or email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-4 flex-1 w-full md:w-auto">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Search leads..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[160px] bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  {statusOrder.map(status => (
+                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <SelectTrigger className="w-[140px] bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                  <SelectValue placeholder="Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Priorities</SelectItem>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="Low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant={viewMode === 'kanban' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('kanban')}
+                className={viewMode === 'kanban' ? 'bg-indigo-600 hover:bg-indigo-700' : 'border-slate-200 dark:border-slate-700'}
+              >
+                <LayoutGrid className="h-4 w-4 mr-1" />
+                Kanban
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className={viewMode === 'list' ? 'bg-indigo-600 hover:bg-indigo-700' : 'border-slate-200 dark:border-slate-700'}
+              >
+                <List className="h-4 w-4 mr-1" />
+                List
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Kanban Board */}
-      {isLoading ? (
-        <Card>
-          <CardContent className="p-6">Loading leads...</CardContent>
-        </Card>
-      ) : (
+      {/* Kanban View */}
+      {viewMode === 'kanban' && (
         <DragDropContext onDragEnd={onDragEnd}>
           <div className="flex gap-4 overflow-x-auto pb-4">
             {statusOrder.map((status) => {
@@ -215,15 +391,17 @@ const CRM = () => {
               const config = statusConfig[status];
 
               return (
-                <div key={status} className="flex-shrink-0 w-80">
-                  <Card className="h-full">
+                <div key={status} className="flex-shrink-0 w-72">
+                  <Card className="h-full bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-base font-semibold flex items-center gap-2">
+                        <CardTitle className="text-sm font-semibold flex items-center gap-2 text-slate-700 dark:text-slate-300">
                           <div className={`w-3 h-3 rounded-full ${config.color}`} />
                           {config.label}
                         </CardTitle>
-                        <Badge variant="secondary">{statusLeads.length}</Badge>
+                        <Badge variant="secondary" className="bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                          {statusLeads.length}
+                        </Badge>
                       </div>
                     </CardHeader>
                     
@@ -232,61 +410,14 @@ const CRM = () => {
                         <CardContent
                           ref={provided.innerRef}
                           {...provided.droppableProps}
-                          className={`space-y-3 min-h-[600px] ${
-                            snapshot.isDraggingOver ? 'bg-accent/50' : ''
+                          className={`space-y-3 min-h-[500px] ${
+                            snapshot.isDraggingOver ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''
                           }`}
                         >
-                          <ScrollArea className="h-[calc(100vh-320px)]">
-                            <div className="space-y-3 pr-4">
+                          <ScrollArea className="h-[calc(100vh-400px)]">
+                            <div className="space-y-3 pr-2">
                               {statusLeads.map((lead, index) => (
-                                <Draggable key={lead.id} draggableId={lead.id} index={index}>
-                                  {(provided, snapshot) => (
-                                    <Card
-                                      ref={provided.innerRef}
-                                      {...provided.draggableProps}
-                                      {...provided.dragHandleProps}
-                                      className={`cursor-pointer hover:shadow-md transition-shadow ${
-                                        snapshot.isDragging ? 'shadow-lg ring-2 ring-primary' : ''
-                                      }`}
-                                      onClick={() => openLeadDetail(lead)}
-                                    >
-                                      <CardContent className="p-4">
-                                        <div className="space-y-3">
-                                          <div className="flex items-start gap-3">
-                                            <Avatar className="h-10 w-10">
-                                              <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${lead.email}`} />
-                                              <AvatarFallback>{lead.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex-1 min-w-0">
-                                              <h4 className="font-semibold text-sm truncate">{lead.name}</h4>
-                                              <p className="text-xs text-muted-foreground truncate">{lead.email}</p>
-                                            </div>
-                                          </div>
-
-                                          <div className="flex items-center justify-between text-xs">
-                                            <div className="flex items-center gap-1 text-muted-foreground">
-                                              {getSourceIcon(lead.source)}
-                                              <span className="capitalize">{lead.source}</span>
-                                            </div>
-                                            <Badge variant="outline" className="text-xs">
-                                              Score: {lead.leadScore}
-                                            </Badge>
-                                          </div>
-
-                                          {lead.sentiment && (
-                                            <Badge variant="outline" className="text-xs capitalize w-fit">
-                                              {lead.sentiment}
-                                            </Badge>
-                                          )}
-
-                                          <div className="text-xs text-muted-foreground">
-                                            {formatDate(lead.createdAt)}
-                                          </div>
-                                        </div>
-                                      </CardContent>
-                                    </Card>
-                                  )}
-                                </Draggable>
+                                <LeadCard key={lead.id} lead={lead} index={index} />
                               ))}
                               {provided.placeholder}
                             </div>
@@ -302,172 +433,230 @@ const CRM = () => {
         </DragDropContext>
       )}
 
+      {/* List View */}
+      {viewMode === 'list' && (
+        <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-slate-200 dark:border-slate-700">
+                  <TableHead className="text-slate-600 dark:text-slate-400">Name</TableHead>
+                  <TableHead className="text-slate-600 dark:text-slate-400">Status</TableHead>
+                  <TableHead className="text-slate-600 dark:text-slate-400">Phone</TableHead>
+                  <TableHead className="text-slate-600 dark:text-slate-400">Email</TableHead>
+                  <TableHead className="text-slate-600 dark:text-slate-400">Property</TableHead>
+                  <TableHead className="text-slate-600 dark:text-slate-400">Next Task Date</TableHead>
+                  <TableHead className="text-slate-600 dark:text-slate-400">Score</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredLeads.map(lead => {
+                  const property = getProperty(lead.property_id);
+                  const leadTasks = getLeadTasks(lead.id);
+                  return (
+                    <TableRow 
+                      key={lead.id} 
+                      className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 border-slate-200 dark:border-slate-700"
+                      onClick={() => openLeadDetail(lead)}
+                    >
+                      <TableCell className="font-medium text-slate-900 dark:text-slate-100">{lead.full_name}</TableCell>
+                      <TableCell>
+                        <Badge className={`${statusConfig[lead.status].bgColor} ${statusConfig[lead.status].color.replace('bg-', 'text-').replace('-500', '-600')} border-0`}>
+                          {lead.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-slate-500">—</TableCell>
+                      <TableCell className="text-slate-500">—</TableCell>
+                      <TableCell className="text-slate-600 dark:text-slate-400">{property?.name || '—'}</TableCell>
+                      <TableCell className="text-slate-500">{leadTasks.length > 0 ? leadTasks[0].due_date : '—'}</TableCell>
+                      <TableCell>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${getScoreColor(lead.lead_score)}`}>
+                          {lead.lead_score}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <ChevronRight className="h-4 w-4 text-slate-400" />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Lead Detail Sheet */}
       <Sheet open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-          {selectedLead && (
-            <>
-              <SheetHeader>
-                <SheetTitle className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedLead.email}`} />
-                    <AvatarFallback>
-                      {selectedLead.name.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div>{selectedLead.name}</div>
-                    <div className="text-sm text-muted-foreground font-normal">
-                      Lead Score: {selectedLead.leadScore}
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto bg-white dark:bg-slate-900">
+          {selectedLead && (() => {
+            const user = getUser(selectedLead.assigned_to);
+            const property = getProperty(selectedLead.property_id);
+            const leadInteractions = getLeadInteractions(selectedLead.id);
+            const leadTasks = getLeadTasks(selectedLead.id);
+
+            return (
+              <>
+                <SheetHeader>
+                  <SheetTitle className="flex items-center gap-3 text-slate-900 dark:text-slate-100">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedLead.id}`} />
+                      <AvatarFallback className="bg-indigo-100 text-indigo-600">
+                        {selectedLead.full_name.split(' ').map(n => n[0]).join('')}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div>{selectedLead.full_name}</div>
+                      <div className="text-sm text-slate-500 font-normal">
+                        Lead Score: {selectedLead.lead_score}
+                      </div>
                     </div>
+                  </SheetTitle>
+                  <SheetDescription className="text-slate-500">
+                    Unified profile across all inquiries and touchpoints
+                  </SheetDescription>
+                  
+                  {/* Contact Buttons */}
+                  <div className="flex gap-2 pt-4">
+                    <Button variant="outline" size="sm" className="border-slate-200 dark:border-slate-700">
+                      <Phone className="h-4 w-4 mr-1" />
+                      Call
+                    </Button>
+                    <Button variant="outline" size="sm" className="border-slate-200 dark:border-slate-700">
+                      <Mail className="h-4 w-4 mr-1" />
+                      Email
+                    </Button>
+                    <Button variant="outline" size="sm" className="border-slate-200 dark:border-slate-700">
+                      <MessageSquare className="h-4 w-4 mr-1" />
+                      SMS
+                    </Button>
                   </div>
-                </SheetTitle>
-                <SheetDescription>
-                  Unified profile across all inquiries and touchpoints
-                </SheetDescription>
-              </SheetHeader>
+                </SheetHeader>
 
-              <Tabs defaultValue="timeline" className="mt-6">
-                <TabsList className="w-full">
-                  <TabsTrigger value="timeline" className="flex-1">Timeline</TabsTrigger>
-                  <TabsTrigger value="details" className="flex-1">Details</TabsTrigger>
-                  <TabsTrigger value="actions" className="flex-1">Actions</TabsTrigger>
-                </TabsList>
+                <Tabs defaultValue="timeline" className="mt-6">
+                  <TabsList className="w-full bg-slate-100 dark:bg-slate-800">
+                    <TabsTrigger value="timeline" className="flex-1 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700">Timeline</TabsTrigger>
+                    <TabsTrigger value="tasks" className="flex-1 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700">Tasks</TabsTrigger>
+                    <TabsTrigger value="profile" className="flex-1 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700">Profile</TabsTrigger>
+                  </TabsList>
 
-                <TabsContent value="timeline" className="space-y-4 mt-4">
-                  {selectedLead.timeline.map((event) => (
-                    <Card key={event.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="mt-1">
-                            {event.type === 'call' && <Phone className="h-4 w-4" />}
-                            {event.type === 'email' && <Mail className="h-4 w-4" />}
-                            {event.type === 'sms' && <MessageSquare className="h-4 w-4" />}
-                            {event.type === 'tour' && <Calendar className="h-4 w-4" />}
-                            {event.type === 'note' && <User className="h-4 w-4" />}
+                  <TabsContent value="timeline" className="space-y-4 mt-4">
+                    {leadInteractions.length > 0 ? (
+                      leadInteractions
+                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                        .map((interaction) => (
+                          <Card key={interaction.id} className="border-slate-200 dark:border-slate-700">
+                            <CardContent className="p-4">
+                              <div className="flex items-start gap-3">
+                                <div className={`mt-1 p-1.5 rounded ${interaction.direction === 'Inbound' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                  {interaction.type === 'Email' && <Mail className="h-3 w-3" />}
+                                  {interaction.type === 'SMS' && <MessageSquare className="h-3 w-3" />}
+                                  {interaction.type === 'Call' && <Phone className="h-3 w-3" />}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="outline" className="text-xs border-slate-200 dark:border-slate-700">
+                                        {interaction.type}
+                                      </Badge>
+                                      <Badge variant="secondary" className="text-xs bg-slate-100 dark:bg-slate-800">
+                                        {interaction.direction}
+                                      </Badge>
+                                    </div>
+                                    <span className="text-xs text-slate-500">
+                                      {formatDate(interaction.date)}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-slate-700 dark:text-slate-300">{interaction.summary}</p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))
+                    ) : (
+                      <div className="text-center py-8 text-slate-500">
+                        No interactions recorded
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="tasks" className="space-y-4 mt-4">
+                    {leadTasks.length > 0 ? (
+                      leadTasks.map((task) => (
+                        <Card key={task.id} className="border-slate-200 dark:border-slate-700">
+                          <CardContent className="p-4">
+                            <p className="text-sm">{task.description}</p>
+                          </CardContent>
+                        </Card>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-slate-500">
+                        No tasks
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="profile" className="space-y-4 mt-4">
+                    <Card className="border-slate-200 dark:border-slate-700">
+                      <CardHeader>
+                        <CardTitle className="text-base text-slate-900 dark:text-slate-100">Lead Information</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Status:</span>
+                          <Badge className={`${statusConfig[selectedLead.status].color} text-white`}>
+                            {selectedLead.status}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Priority:</span>
+                          <Badge className={`${priorityConfig[selectedLead.priority].bgColor} ${priorityConfig[selectedLead.priority].color} border-0`}>
+                            {selectedLead.priority}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Sentiment:</span>
+                          <div className="flex items-center gap-1.5">
+                            <div className={`w-2 h-2 rounded-full ${sentimentConfig[selectedLead.sentiment].dotColor}`} />
+                            <span className={sentimentConfig[selectedLead.sentiment].color}>{selectedLead.sentiment}</span>
                           </div>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <Badge variant="outline" className="capitalize">
-                                {event.type}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                {formatDate(event.timestamp)}
-                              </span>
-                            </div>
-                            <p className="text-sm">{event.content}</p>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Lead Score:</span>
+                          <span className="font-semibold text-slate-900 dark:text-slate-100">{selectedLead.lead_score}/100</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Rent Range:</span>
+                          <span className="font-medium text-slate-900 dark:text-slate-100">{selectedLead.rent_range}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Move-in Date:</span>
+                          <span className="font-medium text-slate-900 dark:text-slate-100">{formatDate(selectedLead.move_in)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Property:</span>
+                          <span className="font-medium text-indigo-600">{property?.name || 'Unknown'}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500">Assigned To:</span>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={user?.avatar} />
+                              <AvatarFallback className="text-xs bg-slate-200 dark:bg-slate-700">
+                                {user?.name?.split(' ').map(n => n[0]).join('') || '?'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium text-slate-900 dark:text-slate-100">{user?.name || 'Unassigned'}</span>
                           </div>
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
-                </TabsContent>
-
-                <TabsContent value="details" className="space-y-4 mt-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Contact Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Email:</span>
-                        <span className="font-medium">{selectedLead.email}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Phone:</span>
-                        <span className="font-medium">{selectedLead.phone}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Language:</span>
-                        <span className="font-medium">{selectedLead.language}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Source:</span>
-                        <Badge variant="outline" className="capitalize">
-                          {selectedLead.source}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Lead Metadata</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Status:</span>
-                        <Badge className={`${statusConfig[selectedLead.status].color} text-white`}>
-                          {statusConfig[selectedLead.status].label}
-                        </Badge>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Lead Score:</span>
-                        <span className="font-medium">{selectedLead.leadScore}/100</span>
-                      </div>
-                      {selectedLead.sentiment && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Sentiment:</span>
-                          <Badge variant="outline" className="capitalize">
-                            {selectedLead.sentiment}
-                          </Badge>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Created:</span>
-                        <span className="font-medium">{formatDate(selectedLead.createdAt)}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="actions" className="space-y-3 mt-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Change Status</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Select
-                        value={selectedLead.status}
-                        onValueChange={(value) => handleStatusChange(selectedLead.id, value as Lead['status'])}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="new">New</SelectItem>
-                          <SelectItem value="contacted">Contacted</SelectItem>
-                          <SelectItem value="tour_scheduled">Tour Scheduled</SelectItem>
-                          <SelectItem value="applied">Applied</SelectItem>
-                          <SelectItem value="leased">Leased</SelectItem>
-                          <SelectItem value="lost">Lost</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </CardContent>
-                  </Card>
-
-                  <div className="grid gap-3">
-                    <Button className="w-full gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Schedule Tour
-                    </Button>
-                    <Button variant="outline" className="w-full gap-2">
-                      <Mail className="h-4 w-4" />
-                      Send Email
-                    </Button>
-                    <Button variant="outline" className="w-full gap-2">
-                      <MessageSquare className="h-4 w-4" />
-                      Send SMS
-                    </Button>
-                    <Button variant="outline" className="w-full gap-2">
-                      <Phone className="h-4 w-4" />
-                      Log Call
-                    </Button>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </>
-          )}
+                  </TabsContent>
+                </Tabs>
+              </>
+            );
+          })()}
         </SheetContent>
       </Sheet>
     </div>
