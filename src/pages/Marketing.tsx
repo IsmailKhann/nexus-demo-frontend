@@ -35,44 +35,22 @@ import { SourceBadge } from "@/components/marketing/SourceBadge";
 interface Listing {
   id: string;
   propertyName: string;
-  propertyId: string;
-  channels: Array<{
-    name: string;
-    status: string;
-    url: string;
-    views: number;
-    leads: number;
-  }>;
+  unitNumber: string;
+  beds: number;
+  baths: number;
+  rent: number;
+  syndicatedTo: { zillow: boolean; apartments: boolean; realtor: boolean; trulia: boolean };
 }
 
-// Transform syndication data to listings
-const getListingsFromSyndication = () => {
-  const listingMap = new Map<string, Listing>();
-  
-  syndicationStatuses.forEach(syn => {
-    const prop = properties.find(p => p.id === syn.property_id);
-    if (!prop) return;
-    
-    if (!listingMap.has(syn.property_id)) {
-      listingMap.set(syn.property_id, {
-        id: syn.property_id,
-        propertyName: prop.name,
-        propertyId: syn.property_id,
-        channels: []
-      });
-    }
-    
-    listingMap.get(syn.property_id)!.channels.push({
-      name: syn.channel_name,
-      status: syn.status,
-      url: syn.listing_url,
-      views: syn.views_last_30d,
-      leads: syn.leads_last_30d
-    });
-  });
-  
-  return Array.from(listingMap.values());
-};
+// Extended campaign type with UI metrics
+interface CampaignWithMetrics extends Campaign {
+  type?: string;
+  audience?: number;
+  sent?: number;
+  opened?: number;
+  clicked?: number;
+  converted?: number;
+}
 
 const mockListings: Listing[] = [
   {
@@ -104,9 +82,25 @@ const mockListings: Listing[] = [
   }
 ];
 
+// Transform imported campaigns to include UI metrics
+const transformCampaigns = (campaigns: Campaign[]): CampaignWithMetrics[] => {
+  return campaigns.map(c => ({
+    ...c,
+    type: c.channel.toLowerCase(),
+    audience: c.leads_generated * 10,
+    sent: c.leads_generated * 8,
+    opened: Math.round(c.leads_generated * 8 * 0.63),
+    clicked: Math.round(c.leads_generated * 8 * 0.19),
+    converted: c.leads_generated
+  }));
+};
+
+const mockCampaigns = transformCampaigns(importedCampaigns);
+const mockTemplates = importedTemplates;
+
 export default function Marketing() {
   const { toast } = useToast();
-  const [campaigns, setCampaigns] = useState<Campaign[]>(mockCampaigns);
+  const [campaigns, setCampaigns] = useState<CampaignWithMetrics[]>(mockCampaigns);
   const [listings, setListings] = useState<Listing[]>(mockListings);
   const [searchQuery, setSearchQuery] = useState("");
   const [aliaOpen, setAliaOpen] = useState(false);
@@ -304,7 +298,7 @@ export default function Marketing() {
                       {template.subject && (
                         <p className="text-xs font-medium text-muted-foreground mb-1">{template.subject}</p>
                       )}
-                      <p className="text-xs text-muted-foreground line-clamp-2">{template.preview}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{template.body.substring(0, 100)}...</p>
                     </div>
                   ))}
                 </div>
