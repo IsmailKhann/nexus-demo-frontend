@@ -4,131 +4,75 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Mail, MessageSquare, Send, Users, Target, Megaphone, 
   TrendingUp, Play, Pause, Plus, Eye, Edit, Copy, 
-  Trash2, ChevronRight, Clock, Zap, Globe, BarChart3,
-  Bot, Sparkles, Filter, Search
+  ChevronRight, Clock, Zap, Globe, BarChart3,
+  Bot, Sparkles, Search, UserPlus, DollarSign
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-
-interface Campaign {
-  id: string;
-  name: string;
-  type: "email" | "sms" | "drip";
-  status: "draft" | "active" | "paused" | "completed";
-  audience: number;
-  sent: number;
-  opened?: number;
-  clicked?: number;
-  converted?: number;
-  createdAt: string;
-}
-
-interface Template {
-  id: string;
-  name: string;
-  type: "email" | "sms";
-  subject?: string;
-  preview: string;
-}
+import { 
+  campaigns as importedCampaigns, 
+  templates as importedTemplates, 
+  automations, 
+  automationSteps,
+  syndicationStatuses,
+  properties,
+  getMarketingMetrics,
+  type Campaign,
+  type MarketingLead,
+  type LeadInteraction,
+  type CampaignEvent
+} from "@/data/marketing";
+import { AddLeadModal } from "@/components/marketing/AddLeadModal";
+import { CreateCampaignModal } from "@/components/marketing/CreateCampaignModal";
+import { SourceBadge } from "@/components/marketing/SourceBadge";
 
 interface Listing {
   id: string;
   propertyName: string;
-  unitNumber: string;
-  beds: number;
-  baths: number;
-  rent: number;
-  syndicatedTo: {
-    zillow: boolean;
-    apartments: boolean;
-    realtor: boolean;
-    trulia: boolean;
-  };
+  propertyId: string;
+  channels: Array<{
+    name: string;
+    status: string;
+    url: string;
+    views: number;
+    leads: number;
+  }>;
 }
 
-const mockCampaigns: Campaign[] = [
-  {
-    id: "camp-1",
-    name: "Spring Move-In Special",
-    type: "email",
-    status: "active",
-    audience: 450,
-    sent: 450,
-    opened: 287,
-    clicked: 89,
-    converted: 12,
-    createdAt: "2025-01-10T10:00:00Z"
-  },
-  {
-    id: "camp-2",
-    name: "Tour Reminder Drip",
-    type: "drip",
-    status: "active",
-    audience: 124,
-    sent: 98,
-    opened: 76,
-    clicked: 34,
-    converted: 8,
-    createdAt: "2025-01-05T14:30:00Z"
-  },
-  {
-    id: "camp-3",
-    name: "Weekend Availability SMS",
-    type: "sms",
-    status: "completed",
-    audience: 220,
-    sent: 220,
-    converted: 15,
-    createdAt: "2025-01-12T09:00:00Z"
-  },
-  {
-    id: "camp-4",
-    name: "Renewal Incentive Campaign",
-    type: "email",
-    status: "draft",
-    audience: 0,
-    sent: 0,
-    createdAt: "2025-01-15T16:00:00Z"
-  }
-];
-
-const mockTemplates: Template[] = [
-  {
-    id: "tmpl-1",
-    name: "Welcome to Community",
-    type: "email",
-    subject: "Welcome to {{property_name}}!",
-    preview: "Thank you for your interest in {{property_name}}. We're excited to help you find your new home..."
-  },
-  {
-    id: "tmpl-2",
-    name: "Tour Follow-Up",
-    type: "email",
-    subject: "Thank you for touring {{property_name}}",
-    preview: "Hi {{first_name}}, it was great showing you around today! Here's what we discussed..."
-  },
-  {
-    id: "tmpl-3",
-    name: "Quick Availability Alert",
-    type: "sms",
-    preview: "Hi {{first_name}}! A {{beds}}BR just became available at {{property_name}}. Move-in ready! Reply YES for details."
-  },
-  {
-    id: "tmpl-4",
-    name: "Application Reminder",
-    type: "sms",
-    preview: "{{first_name}}, your application is almost complete! Just 2 steps left. Click here: {{link}}"
-  }
-];
+// Transform syndication data to listings
+const getListingsFromSyndication = () => {
+  const listingMap = new Map<string, Listing>();
+  
+  syndicationStatuses.forEach(syn => {
+    const prop = properties.find(p => p.id === syn.property_id);
+    if (!prop) return;
+    
+    if (!listingMap.has(syn.property_id)) {
+      listingMap.set(syn.property_id, {
+        id: syn.property_id,
+        propertyName: prop.name,
+        propertyId: syn.property_id,
+        channels: []
+      });
+    }
+    
+    listingMap.get(syn.property_id)!.channels.push({
+      name: syn.channel_name,
+      status: syn.status,
+      url: syn.listing_url,
+      views: syn.views_last_30d,
+      leads: syn.leads_last_30d
+    });
+  });
+  
+  return Array.from(listingMap.values());
+};
 
 const mockListings: Listing[] = [
   {
