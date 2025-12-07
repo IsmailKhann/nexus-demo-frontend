@@ -1,137 +1,31 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  Mail, MessageSquare, Send, Users, Target, Megaphone, 
-  TrendingUp, Play, Pause, Plus, Eye, Edit, Copy, 
-  ChevronRight, Clock, Zap, Globe, BarChart3,
-  Bot, Sparkles, Search, UserPlus, DollarSign
-} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Bot, Plus, Sparkles, Send, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { 
-  campaigns as importedCampaigns, 
-  templates as importedTemplates, 
-  automations, 
-  automationSteps,
-  syndicationStatuses,
-  properties,
-  getMarketingMetrics,
-  type Campaign,
-  type MarketingLead,
-  type LeadInteraction,
-  type CampaignEvent
-} from "@/data/marketing";
+import { getMarketingMetrics, type Campaign, type CampaignEvent } from "@/data/marketing";
 import { AddLeadModal } from "@/components/marketing/AddLeadModal";
 import { CreateCampaignModal } from "@/components/marketing/CreateCampaignModal";
-import { SourceBadge } from "@/components/marketing/SourceBadge";
-
-interface Listing {
-  id: string;
-  propertyName: string;
-  unitNumber: string;
-  beds: number;
-  baths: number;
-  rent: number;
-  syndicatedTo: { zillow: boolean; apartments: boolean; realtor: boolean; trulia: boolean };
-}
-
-// Extended campaign type with UI metrics
-interface CampaignWithMetrics extends Campaign {
-  type?: string;
-  audience?: number;
-  sent?: number;
-  opened?: number;
-  clicked?: number;
-  converted?: number;
-}
-
-const mockListings: Listing[] = [
-  {
-    id: "list-1",
-    propertyName: "Sunset Towers",
-    unitNumber: "205",
-    beds: 2,
-    baths: 2,
-    rent: 2200,
-    syndicatedTo: { zillow: true, apartments: true, realtor: true, trulia: false }
-  },
-  {
-    id: "list-2",
-    propertyName: "Harbor View Apartments",
-    unitNumber: "102",
-    beds: 1,
-    baths: 1,
-    rent: 1650,
-    syndicatedTo: { zillow: true, apartments: true, realtor: false, trulia: true }
-  },
-  {
-    id: "list-3",
-    propertyName: "Downtown Lofts",
-    unitNumber: "8B",
-    beds: 2,
-    baths: 1,
-    rent: 1950,
-    syndicatedTo: { zillow: true, apartments: false, realtor: true, trulia: true }
-  }
-];
-
-// Transform imported campaigns to include UI metrics
-const transformCampaigns = (campaigns: Campaign[]): CampaignWithMetrics[] => {
-  return campaigns.map(c => ({
-    ...c,
-    type: c.channel.toLowerCase(),
-    audience: c.leads_generated * 10,
-    sent: c.leads_generated * 8,
-    opened: Math.round(c.leads_generated * 8 * 0.63),
-    clicked: Math.round(c.leads_generated * 8 * 0.19),
-    converted: c.leads_generated
-  }));
-};
-
-const mockCampaigns = transformCampaigns(importedCampaigns);
-const mockTemplates = importedTemplates;
+import { CampaignsTab } from "@/components/marketing/CampaignsTab";
+import { DripSequenceTab } from "@/components/marketing/DripSequenceTab";
+import { SyndicationTab } from "@/components/marketing/SyndicationTab";
+import { AttributionTab } from "@/components/marketing/AttributionTab";
 
 export default function Marketing() {
   const { toast } = useToast();
-  const [campaigns, setCampaigns] = useState<CampaignWithMetrics[]>(mockCampaigns);
-  const [listings, setListings] = useState<Listing[]>(mockListings);
-  const [searchQuery, setSearchQuery] = useState("");
   const [aliaOpen, setAliaOpen] = useState(false);
   const [aliaChatHistory, setAliaChatHistory] = useState<Array<{role: 'user' | 'alia'; message: string}>>([
     { role: 'alia', message: 'Hi! I\'m ALIA, your AI Leasing Assistant. How can I help you with your marketing campaigns today?' }
   ]);
   const [aliaInput, setAliaInput] = useState("");
+  const [addLeadOpen, setAddLeadOpen] = useState(false);
+  const [createCampaignOpen, setCreateCampaignOpen] = useState(false);
 
-  const filteredCampaigns = campaigns.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleToggleSyndication = (listingId: string, platform: keyof Listing['syndicatedTo']) => {
-    setListings(prev => prev.map(listing => {
-      if (listing.id === listingId) {
-        return {
-          ...listing,
-          syndicatedTo: {
-            ...listing.syndicatedTo,
-            [platform]: !listing.syndicatedTo[platform]
-          }
-        };
-      }
-      return listing;
-    }));
-    
-    toast({
-      title: "Syndication Updated",
-      description: `Listing syndication preferences saved.`
-    });
-  };
+  const metrics = getMarketingMetrics();
 
   const handleAliaMessage = () => {
     if (!aliaInput.trim()) return;
@@ -146,9 +40,11 @@ export default function Marketing() {
       if (userMessage.toLowerCase().includes('campaign')) {
         response += "To create a new campaign, click the 'New Campaign' button and choose your audience. Would you like me to suggest segments based on your current leads?";
       } else if (userMessage.toLowerCase().includes('template')) {
-        response += "I found 4 email templates and 2 SMS templates. The 'Tour Follow-Up' template has a 68% open rate. Would you like to use it?";
+        response += "I found 5 templates. The 'Welcome Email' template has a 68% open rate. Would you like to use it?";
       } else if (userMessage.toLowerCase().includes('performance')) {
-        response += "Your campaigns this month show a 63% open rate and 19% click-through rate, which is above industry average! The 'Spring Move-In Special' is your top performer.";
+        response += `Your campaigns this month show ${metrics.avgROI}% average ROI with ${metrics.totalLeadsFromCampaigns} leads generated. The active campaigns are performing above industry average!`;
+      } else if (userMessage.toLowerCase().includes('lead')) {
+        response += `You have ${metrics.totalLeads} total leads, ${metrics.newThisWeek} new this week, and ${metrics.toursScheduled} tours scheduled. Would you like to see a breakdown by source?`;
       } else {
         response += "I can help you create campaigns, analyze performance, build audience segments, or optimize your drip sequences. What would you like to do?";
       }
@@ -156,449 +52,85 @@ export default function Marketing() {
     }, 1000);
   };
 
+  const handleCreateCampaign = (campaign: Campaign, events: CampaignEvent[]) => {
+    // In a real app, this would update state and persist
+    toast({
+      title: "Campaign Created",
+      description: `${campaign.name} has been ${campaign.status === 'Active' ? 'launched' : 'scheduled'} successfully.`
+    });
+  };
+
   return (
     <div className="p-6 space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Marketing Automation</h1>
-          <p className="text-muted-foreground">Campaign builder, drip sequences, and listing syndication</p>
+          <h1 className="text-3xl font-bold">Marketing & Automation</h1>
+          <p className="text-muted-foreground">Campaign builder, drip sequences, listing syndication, and attribution</p>
         </div>
         <div className="flex gap-2">
+          <Button onClick={() => setAddLeadOpen(true)} variant="outline" className="gap-2">
+            <UserPlus className="h-4 w-4" />
+            Add Lead
+          </Button>
           <Button onClick={() => setAliaOpen(true)} variant="outline" className="gap-2">
             <Bot className="h-4 w-4" />
             Ask ALIA
           </Button>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Campaign
-          </Button>
         </div>
       </div>
 
+      {/* KPI Summary Bar */}
+      <div className="grid grid-cols-6 gap-4 p-4 bg-muted/30 rounded-lg border">
+        <div className="text-center">
+          <p className="text-2xl font-bold text-primary">{metrics.totalLeads}</p>
+          <p className="text-xs text-muted-foreground">Total Leads</p>
+        </div>
+        <div className="text-center">
+          <p className="text-2xl font-bold text-emerald-600">+{metrics.newThisWeek}</p>
+          <p className="text-xs text-muted-foreground">New This Week</p>
+        </div>
+        <div className="text-center">
+          <p className="text-2xl font-bold">{metrics.toursScheduled}</p>
+          <p className="text-xs text-muted-foreground">Tours Scheduled</p>
+        </div>
+        <div className="text-center">
+          <p className="text-2xl font-bold">{metrics.avgLeadScore}</p>
+          <p className="text-xs text-muted-foreground">Avg Lead Score</p>
+        </div>
+        <div className="text-center">
+          <p className="text-2xl font-bold">{metrics.activeCampaigns}</p>
+          <p className="text-xs text-muted-foreground">Active Campaigns</p>
+        </div>
+        <div className="text-center">
+          <p className="text-2xl font-bold text-primary">{metrics.avgROI}%</p>
+          <p className="text-xs text-muted-foreground">Avg ROI</p>
+        </div>
+      </div>
+
+      {/* Main Tabs */}
       <Tabs defaultValue="campaigns" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
           <TabsTrigger value="drip">Drip Sequences</TabsTrigger>
           <TabsTrigger value="syndication">Listing Syndication</TabsTrigger>
           <TabsTrigger value="attribution">Attribution</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="campaigns" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Active Campaigns</CardTitle>
-                  <CardDescription>Email, SMS, and automated drip campaigns</CardDescription>
-                </div>
-                <div className="flex gap-2">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search campaigns..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9 w-64"
-                    />
-                  </div>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {filteredCampaigns.map((campaign) => (
-                  <div key={campaign.id} className="border rounded-lg p-4 hover:border-primary/50 transition-colors">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold">{campaign.name}</h3>
-                          <Badge variant={
-                            campaign.status === "active" ? "default" :
-                            campaign.status === "completed" ? "secondary" :
-                            "outline"
-                          }>
-                            {campaign.status}
-                          </Badge>
-                          <Badge variant="outline" className="gap-1">
-                            {campaign.type === "email" ? <Mail className="h-3 w-3" /> :
-                             campaign.type === "sms" ? <MessageSquare className="h-3 w-3" /> :
-                             <Zap className="h-3 w-3" />}
-                            {campaign.type}
-                          </Badge>
-                        </div>
-                        
-                        <div className="grid grid-cols-5 gap-4 mt-3">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Audience</p>
-                            <p className="text-lg font-semibold">{campaign.audience}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Sent</p>
-                            <p className="text-lg font-semibold">{campaign.sent}</p>
-                          </div>
-                          {campaign.opened !== undefined && (
-                            <div>
-                              <p className="text-sm text-muted-foreground">Opened</p>
-                              <p className="text-lg font-semibold">
-                                {campaign.opened} 
-                                <span className="text-sm text-muted-foreground ml-1">
-                                  ({campaign.sent > 0 ? Math.round((campaign.opened / campaign.sent) * 100) : 0}%)
-                                </span>
-                              </p>
-                            </div>
-                          )}
-                          {campaign.clicked !== undefined && (
-                            <div>
-                              <p className="text-sm text-muted-foreground">Clicked</p>
-                              <p className="text-lg font-semibold">
-                                {campaign.clicked}
-                                <span className="text-sm text-muted-foreground ml-1">
-                                  ({campaign.opened && campaign.opened > 0 ? Math.round((campaign.clicked / campaign.opened) * 100) : 0}%)
-                                </span>
-                              </p>
-                            </div>
-                          )}
-                          <div>
-                            <p className="text-sm text-muted-foreground">Converted</p>
-                            <p className="text-lg font-semibold text-primary">{campaign.converted || 0}</p>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-2 ml-4">
-                        <Button variant="ghost" size="icon">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon">
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-6 pt-6 border-t">
-                <h3 className="font-semibold mb-3">Email & SMS Templates</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {mockTemplates.map((template) => (
-                    <div key={template.id} className="border rounded-lg p-3 hover:border-primary/50 transition-colors cursor-pointer">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="gap-1">
-                            {template.type === "email" ? <Mail className="h-3 w-3" /> : <MessageSquare className="h-3 w-3" />}
-                            {template.type}
-                          </Badge>
-                          <span className="font-medium text-sm">{template.name}</span>
-                        </div>
-                      </div>
-                      {template.subject && (
-                        <p className="text-xs font-medium text-muted-foreground mb-1">{template.subject}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground line-clamp-2">{template.body.substring(0, 100)}...</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="campaigns" className="mt-6">
+          <CampaignsTab onNewCampaign={() => setCreateCampaignOpen(true)} />
         </TabsContent>
 
-        <TabsContent value="drip" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Drip Sequence Builder</CardTitle>
-              <CardDescription>Create automated multi-step campaigns with triggers and delays</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="border-2 border-dashed rounded-lg p-8 text-center">
-                  <Zap className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="font-semibold mb-2">Visual Drip Sequence Builder</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Create multi-step campaigns with triggers, delays, and conditional logic
-                  </p>
-                  <Button className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Create New Sequence
-                  </Button>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="font-semibold">Active Sequences</h3>
-                  
-                  <div className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Zap className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold">New Lead Welcome Sequence</h4>
-                          <p className="text-sm text-muted-foreground">5 steps • 124 active leads</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Badge variant="default">Active</Badge>
-                        <Button variant="ghost" size="icon">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-3 ml-12">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 flex-1 border rounded-lg p-3 bg-background">
-                          <Mail className="h-4 w-4 text-primary" />
-                          <span className="text-sm">Welcome Email</span>
-                          <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 ml-6">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">Wait 2 days</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 flex-1 border rounded-lg p-3 bg-background">
-                          <MessageSquare className="h-4 w-4 text-primary" />
-                          <span className="text-sm">Follow-up SMS</span>
-                          <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 ml-6">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">Wait 3 days</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 flex-1 border rounded-lg p-3 bg-background">
-                          <Mail className="h-4 w-4 text-primary" />
-                          <span className="text-sm">Tour Invitation</span>
-                          <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center">
-                          <Zap className="h-5 w-5 text-accent" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold">Post-Tour Follow-Up</h4>
-                          <p className="text-sm text-muted-foreground">3 steps • 45 active leads</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Badge variant="default">Active</Badge>
-                        <Button variant="ghost" size="icon">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-3 ml-12">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 flex-1 border rounded-lg p-3 bg-background">
-                          <Mail className="h-4 w-4 text-accent" />
-                          <span className="text-sm">Thank You Email</span>
-                          <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 ml-6">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">Wait 1 day</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 flex-1 border rounded-lg p-3 bg-background">
-                          <MessageSquare className="h-4 w-4 text-accent" />
-                          <span className="text-sm">Application Reminder</span>
-                          <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="drip" className="mt-6">
+          <DripSequenceTab />
         </TabsContent>
 
-        <TabsContent value="syndication" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Listing Syndication</CardTitle>
-              <CardDescription>Manage where your listings appear across rental platforms</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {listings.map((listing) => (
-                  <div key={listing.id} className="border rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="font-semibold">{listing.propertyName} - Unit {listing.unitNumber}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {listing.beds} bed • {listing.baths} bath • ${listing.rent.toLocaleString()}/mo
-                        </p>
-                      </div>
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <Eye className="h-4 w-4" />
-                        Preview
-                      </Button>
-                    </div>
-                    
-                    <div className="grid grid-cols-4 gap-4">
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <Globe className="h-4 w-4" />
-                          <span className="text-sm font-medium">Zillow</span>
-                        </div>
-                        <Switch
-                          checked={listing.syndicatedTo.zillow}
-                          onCheckedChange={() => handleToggleSyndication(listing.id, 'zillow')}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <Globe className="h-4 w-4" />
-                          <span className="text-sm font-medium">Apartments.com</span>
-                        </div>
-                        <Switch
-                          checked={listing.syndicatedTo.apartments}
-                          onCheckedChange={() => handleToggleSyndication(listing.id, 'apartments')}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <Globe className="h-4 w-4" />
-                          <span className="text-sm font-medium">Realtor.com</span>
-                        </div>
-                        <Switch
-                          checked={listing.syndicatedTo.realtor}
-                          onCheckedChange={() => handleToggleSyndication(listing.id, 'realtor')}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <Globe className="h-4 w-4" />
-                          <span className="text-sm font-medium">Trulia</span>
-                        </div>
-                        <Switch
-                          checked={listing.syndicatedTo.trulia}
-                          onCheckedChange={() => handleToggleSyndication(listing.id, 'trulia')}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="syndication" className="mt-6">
+          <SyndicationTab />
         </TabsContent>
 
-        <TabsContent value="attribution" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Marketing Attribution</CardTitle>
-              <CardDescription>Multi-touch attribution and ROI analysis</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="grid grid-cols-4 gap-4">
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardDescription>Total Leads</CardDescription>
-                      <CardTitle className="text-3xl">1,247</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center gap-1 text-sm text-accent">
-                        <TrendingUp className="h-4 w-4" />
-                        <span>+12.5% vs last month</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardDescription>Cost Per Lead</CardDescription>
-                      <CardTitle className="text-3xl">$42</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center gap-1 text-sm text-accent">
-                        <TrendingUp className="h-4 w-4" />
-                        <span>-8% vs last month</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardDescription>Conversion Rate</CardDescription>
-                      <CardTitle className="text-3xl">6.8%</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center gap-1 text-sm text-accent">
-                        <TrendingUp className="h-4 w-4" />
-                        <span>+1.2% vs last month</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardDescription>Marketing ROI</CardDescription>
-                      <CardTitle className="text-3xl">385%</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center gap-1 text-sm text-accent">
-                        <TrendingUp className="h-4 w-4" />
-                        <span>+23% vs last month</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div className="border rounded-lg p-6">
-                  <h3 className="font-semibold mb-4">Channel Performance</h3>
-                  <div className="space-y-3">
-                    {[
-                      { channel: "ILS (Apartments.com)", leads: 458, cost: 38, conversions: 34 },
-                      { channel: "Website", leads: 312, cost: 28, conversions: 28 },
-                      { channel: "SMS Campaigns", leads: 245, cost: 52, conversions: 18 },
-                      { channel: "Email Campaigns", leads: 189, cost: 45, conversions: 12 },
-                      { channel: "Referrals", leads: 43, cost: 15, conversions: 8 }
-                    ].map((item) => (
-                      <div key={item.channel} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex-1">
-                          <p className="font-medium">{item.channel}</p>
-                          <p className="text-sm text-muted-foreground">{item.leads} leads • ${item.cost} CPL</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-primary">{item.conversions} conversions</p>
-                          <p className="text-sm text-muted-foreground">
-                            {((item.conversions / item.leads) * 100).toFixed(1)}% rate
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="attribution" className="mt-6">
+          <AttributionTab />
         </TabsContent>
       </Tabs>
 
@@ -651,6 +183,25 @@ export default function Marketing() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Add Lead Modal */}
+      <AddLeadModal 
+        open={addLeadOpen} 
+        onOpenChange={setAddLeadOpen} 
+        onAddLead={(lead, interaction) => {
+          toast({
+            title: "Lead Created",
+            description: `${lead.full_name} has been added successfully.`
+          });
+        }}
+      />
+
+      {/* Create Campaign Modal */}
+      <CreateCampaignModal 
+        open={createCampaignOpen} 
+        onOpenChange={setCreateCampaignOpen}
+        onCreateCampaign={handleCreateCampaign}
+      />
     </div>
   );
 }
