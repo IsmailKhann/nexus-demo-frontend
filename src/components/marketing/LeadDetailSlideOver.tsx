@@ -51,7 +51,7 @@ export function LeadDetailSlideOver({ lead, onClose }: LeadDetailSlideOverProps)
   const [activeTab, setActiveTab] = useState("timeline");
   
   const leadInteractionsList = leadInteractions.filter(i => i.lead_id === lead.id);
-  const leadTasks = tasks.filter(t => t.lead_id === lead.id);
+  const leadTasks = tasksList.filter(t => t.lead_id === lead.id);
 
   return (
     <div className="fixed inset-y-0 right-0 w-[480px] bg-background border-l shadow-xl z-50 flex flex-col animate-slide-in-right">
