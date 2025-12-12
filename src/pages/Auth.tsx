@@ -37,7 +37,8 @@ const Auth = () => {
         title: 'Welcome to Nexus!',
         description: 'Successfully logged in',
       });
-      navigate('/dashboard');
+      // Redirect tenants to tenant portal, others to dashboard
+      navigate(role === 'tenant' ? '/tenant-portal' : '/dashboard');
     } catch (error) {
       toast({
         title: 'Login failed',
@@ -101,7 +102,7 @@ const Auth = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="role">Select Role</Label>
-                <Select value={role} onValueChange={setRole}>
+              <Select value={role} onValueChange={setRole}>
                   <SelectTrigger id="role">
                     <SelectValue />
                   </SelectTrigger>
@@ -111,6 +112,7 @@ const Auth = () => {
                     <SelectItem value="leasing_agent">Leasing Agent</SelectItem>
                     <SelectItem value="maintenance_tech">Maintenance Tech</SelectItem>
                     <SelectItem value="owner">Owner</SelectItem>
+                    <SelectItem value="tenant">Tenant</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -128,7 +130,7 @@ const Auth = () => {
               <p className="text-sm text-muted-foreground mb-3 text-center">
                 Quick Demo Access
               </p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -160,6 +162,22 @@ const Auth = () => {
                   type="button"
                 >
                   Tech
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => quickLogin('tenant')}
+                  type="button"
+                >
+                  Tenant
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => quickLogin('owner')}
+                  type="button"
+                >
+                  Owner
                 </Button>
               </div>
             </div>

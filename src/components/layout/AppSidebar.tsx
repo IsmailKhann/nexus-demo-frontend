@@ -14,6 +14,9 @@ import {
   UserCog,
   Inbox,
   Home,
+  ClipboardList,
+  Bell,
+  Star,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -27,8 +30,10 @@ import {
   SidebarHeader,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { getCurrentUser } from '@/lib/mockApi';
 
-const navigation = [
+// Manager/Admin navigation
+const managerNavigation = [
   {
     title: 'Overview',
     items: [
@@ -74,9 +79,35 @@ const navigation = [
   },
 ];
 
+// Tenant navigation
+const tenantNavigation = [
+  {
+    title: 'Home',
+    items: [
+      { title: 'My Portal', url: '/tenant-portal', icon: Home },
+    ],
+  },
+  {
+    title: 'Maintenance',
+    items: [
+      { title: 'My Requests', url: '/tenant-portal', icon: ClipboardList },
+    ],
+  },
+  {
+    title: 'Account',
+    items: [
+      { title: 'Settings', url: '/settings', icon: Settings },
+    ],
+  },
+];
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
+  const currentUser = getCurrentUser();
+
+  const isTenant = currentUser?.role === 'tenant';
+  const navigation = isTenant ? tenantNavigation : managerNavigation;
 
   const isActive = (path: string) => location.pathname === path;
   const isCollapsed = state === 'collapsed';
@@ -91,7 +122,9 @@ export function AppSidebar() {
           {!isCollapsed && (
             <div>
               <h2 className="font-bold text-lg">Nexus</h2>
-              <p className="text-xs text-sidebar-foreground/70">CRM + PMS</p>
+              <p className="text-xs text-sidebar-foreground/70">
+                {isTenant ? 'Tenant Portal' : 'CRM + PMS'}
+              </p>
             </div>
           )}
         </div>

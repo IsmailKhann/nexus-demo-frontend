@@ -51,6 +51,11 @@ export const mockLogin = async (
     email,
     role: role as User['role'],
     avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+    // Add tenant-specific data for tenant role
+    ...(role === 'tenant' ? {
+      unitId: 'u101',
+      propertyId: 'p1',
+    } : {}),
   };
 
   setCurrentUser(user);

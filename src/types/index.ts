@@ -1,6 +1,6 @@
 // Core type definitions for Nexus
 
-export type UserRole = 'admin' | 'property_manager' | 'leasing_agent' | 'maintenance_tech' | 'owner';
+export type UserRole = 'admin' | 'property_manager' | 'leasing_agent' | 'maintenance_tech' | 'owner' | 'tenant';
 
 export interface User {
   id: string;
@@ -9,6 +9,8 @@ export interface User {
   role: UserRole;
   avatar?: string;
   phone?: string;
+  unitId?: string; // For tenants
+  propertyId?: string; // For tenants
 }
 
 export interface Property {
