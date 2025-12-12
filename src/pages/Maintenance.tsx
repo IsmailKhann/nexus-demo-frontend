@@ -3,6 +3,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -10,39 +11,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { fetchWorkOrders, updateWorkOrderStatus } from '@/lib/mockApi';
 import type { WorkOrder } from '@/types';
-import { Wrench, AlertCircle, Clock, CheckCircle, XCircle, DollarSign, User } from 'lucide-react';
+import type { ExtendedWorkOrder, Vendor, MaintenanceRequest, InternalTeam } from '@/types/maintenance';
+import { Wrench, AlertCircle, Clock, CheckCircle, XCircle, DollarSign, User, BarChart3, ClipboardList } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { CreateWorkOrderModal } from '@/components/maintenance/CreateWorkOrderModal';
+import { WorkOrderDetailPanel } from '@/components/maintenance/WorkOrderDetailPanel';
+import { AnalyticsTab } from '@/components/maintenance/AnalyticsTab';
+import { RequestsPanel } from '@/components/maintenance/RequestsPanel';
+import vendorsData from '@/data/vendors.json';
 
 const priorityColors: Record<WorkOrder['priority'], string> = {
   low: 'bg-gray-500',
   medium: 'bg-yellow-500',
   high: 'bg-orange-500',
   emergency: 'bg-red-500',
-};
-
-const statusColors: Record<WorkOrder['status'], string> = {
-  new: 'bg-blue-500',
-  assigned: 'bg-purple-500',
-  in_progress: 'bg-orange-500',
-  completed: 'bg-green-500',
-  cancelled: 'bg-gray-500',
-};
-
-const statusIcons: Record<WorkOrder['status'], typeof Clock> = {
-  new: AlertCircle,
-  assigned: User,
-  in_progress: Clock,
-  completed: CheckCircle,
-  cancelled: XCircle,
 };
 
 const statusConfig = {
@@ -55,13 +39,32 @@ const statusConfig = {
 
 const statusOrder: WorkOrder['status'][] = ['new', 'assigned', 'in_progress', 'completed'];
 
+// Mock data
+const mockTeams: InternalTeam[] = [
+  { id: 'team-1', name: 'Building Maintenance Team', category: 'General Maintenance', members: ['John', 'Mike'], status: 'available' },
+  { id: 'team-2', name: 'HVAC Specialists', category: 'HVAC', members: ['Dave', 'Steve'], status: 'available' },
+];
+
+const mockRequests: MaintenanceRequest[] = [
+  { id: 'req-1', tenantId: 't1', tenantName: 'John Smith', unitId: 'u101', propertyId: 'p1', propertyName: 'Sunset Apartments', title: 'AC Not Cooling', description: 'AC running but not cold', priority: 'high', status: 'pending', category: 'HVAC', createdAt: new Date().toISOString() },
+  { id: 'req-2', tenantId: 't2', tenantName: 'Jane Doe', unitId: 'u205', propertyId: 'p2', propertyName: 'Oak Grove Condos', title: 'Leaky Faucet', description: 'Kitchen faucet dripping', priority: 'low', status: 'pending', category: 'Plumbing', createdAt: new Date(Date.now() - 3600000).toISOString() },
+];
+
 const Maintenance = () => {
-  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [workOrders, setWorkOrders] = useState<ExtendedWorkOrder[]>([]);
+  const [requests, setRequests] = useState<MaintenanceRequest[]>(mockRequests);
   const [isLoading, setIsLoading] = useState(true);
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
-  const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<ExtendedWorkOrder | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [requestToConvert, setRequestToConvert] = useState<MaintenanceRequest | null>(null);
+  const [activeTab, setActiveTab] = useState('board');
+  const [analyticsTimeRange, setAnalyticsTimeRange] = useState('30d');
+  const [requestSearch, setRequestSearch] = useState('');
   const { toast } = useToast();
+
+  const vendors = vendorsData as Vendor[];
 
   useEffect(() => {
     loadWorkOrders();
@@ -70,13 +73,19 @@ const Maintenance = () => {
   const loadWorkOrders = async () => {
     try {
       const data = await fetchWorkOrders();
-      setWorkOrders(data);
+      // Transform to ExtendedWorkOrder
+      const extended: ExtendedWorkOrder[] = data.map((wo) => ({
+        ...wo,
+        tenantName: `Tenant ${wo.tenantId}`,
+        propertyName: `Property ${wo.propertyId}`,
+        assignedVendorName: wo.assignedVendorId ? vendors.find(v => v.id === wo.assignedVendorId)?.name : undefined,
+        attachments: [],
+        notes: [],
+        timeline: [{ id: `evt-${wo.id}`, type: 'created' as const, description: 'Work order created', timestamp: wo.createdAt, userId: 'system', userName: 'System' }],
+      }));
+      setWorkOrders(extended);
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load work orders',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to load work orders', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -84,65 +93,53 @@ const Maintenance = () => {
 
   const getOrdersByStatus = (status: WorkOrder['status']) => {
     let filtered = workOrders.filter(wo => wo.status === status);
-    
     if (priorityFilter !== 'all') {
       filtered = filtered.filter(wo => wo.priority === priorityFilter);
     }
-    
     return filtered;
   };
 
   const onDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result;
-
-    if (!destination) return;
-    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
-
+    if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) return;
     const newStatus = destination.droppableId as WorkOrder['status'];
-    await handleStatusChange(draggableId, newStatus);
+    handleStatusChange(draggableId, newStatus);
   };
 
   const handleStatusChange = async (orderId: string, newStatus: WorkOrder['status']) => {
     try {
       await updateWorkOrderStatus(orderId, newStatus);
-      setWorkOrders((prev) =>
-        prev.map((wo) =>
-          wo.id === orderId ? { ...wo, status: newStatus, updatedAt: new Date().toISOString() } : wo
-        )
-      );
-      toast({
-        title: 'Status updated',
-        description: 'Work order status has been updated successfully',
-      });
+      setWorkOrders((prev) => prev.map((wo) => wo.id === orderId ? { ...wo, status: newStatus, updatedAt: new Date().toISOString() } : wo));
+      toast({ title: 'Status updated', description: 'Work order status has been updated successfully' });
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update work order status',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to update work order status', variant: 'destructive' });
     }
   };
 
-  const openOrderDetail = (order: WorkOrder) => {
-    setSelectedOrder(order);
-    setIsDetailOpen(true);
+  const handleCreateWorkOrder = (workOrder: Partial<ExtendedWorkOrder>) => {
+    setWorkOrders(prev => [workOrder as ExtendedWorkOrder, ...prev]);
+    if (requestToConvert) {
+      setRequests(prev => prev.map(r => r.id === requestToConvert.id ? { ...r, status: 'converted' as const } : r));
+      setRequestToConvert(null);
+    }
   };
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric',
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+  const handleConvertRequest = (request: MaintenanceRequest) => {
+    setRequestToConvert(request);
+    setIsCreateModalOpen(true);
   };
 
-  const getStatusIcon = (status: WorkOrder['status']) => {
-    const Icon = statusIcons[status];
-    return <Icon className="h-4 w-4" />;
+  const handleDeclineRequest = (requestId: string) => {
+    setRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'declined' as const } : r));
+    toast({ title: 'Request Declined', description: 'The maintenance request has been declined' });
   };
+
+  const handleUpdateWorkOrder = (updatedOrder: ExtendedWorkOrder) => {
+    setWorkOrders(prev => prev.map(wo => wo.id === updatedOrder.id ? updatedOrder : wo));
+    setSelectedOrder(updatedOrder);
+  };
+
+  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   const stats = {
     total: workOrders.length,
@@ -153,305 +150,83 @@ const Maintenance = () => {
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto animate-fade-in">
-      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Maintenance & Operations</h1>
           <p className="text-muted-foreground">Work order management and vendor tracking</p>
         </div>
-        <Button className="nexus-gradient-primary text-white">
+        <Button className="nexus-gradient-primary text-white" onClick={() => setIsCreateModalOpen(true)}>
           <Wrench className="h-4 w-4 mr-2" />
           New Work Order
         </Button>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Orders</CardDescription>
-            <CardTitle className="text-3xl">{stats.total}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>New Requests</CardDescription>
-            <CardTitle className="text-3xl text-blue-500">{stats.new}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>In Progress</CardDescription>
-            <CardTitle className="text-3xl text-orange-500">{stats.inProgress}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Completed</CardDescription>
-            <CardTitle className="text-3xl text-green-500">{stats.completed}</CardTitle>
-          </CardHeader>
-        </Card>
+        <Card><CardHeader className="pb-2"><CardDescription>Total Orders</CardDescription><CardTitle className="text-3xl">{stats.total}</CardTitle></CardHeader></Card>
+        <Card><CardHeader className="pb-2"><CardDescription>New Requests</CardDescription><CardTitle className="text-3xl text-blue-500">{stats.new}</CardTitle></CardHeader></Card>
+        <Card><CardHeader className="pb-2"><CardDescription>In Progress</CardDescription><CardTitle className="text-3xl text-orange-500">{stats.inProgress}</CardTitle></CardHeader></Card>
+        <Card><CardHeader className="pb-2"><CardDescription>Completed</CardDescription><CardTitle className="text-3xl text-green-500">{stats.completed}</CardTitle></CardHeader></Card>
       </div>
 
-      {/* Filter */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-medium">Filter by priority:</span>
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Filter by priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Priorities</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="emergency">Emergency</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="board"><ClipboardList className="h-4 w-4 mr-2" />Work Orders</TabsTrigger>
+          <TabsTrigger value="requests"><AlertCircle className="h-4 w-4 mr-2" />Requests</TabsTrigger>
+          <TabsTrigger value="analytics"><BarChart3 className="h-4 w-4 mr-2" />Analytics</TabsTrigger>
+        </TabsList>
 
-      {/* Kanban Board */}
-      {isLoading ? (
-        <Card>
-          <CardContent className="p-6">Loading work orders...</CardContent>
-        </Card>
-      ) : (
-        <DragDropContext onDragEnd={onDragEnd}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {statusOrder.map((status) => {
-              const config = statusConfig[status];
-              const orders = getOrdersByStatus(status);
-              const Icon = config.icon;
+        <TabsContent value="board" className="space-y-4 mt-4">
+          <Card><CardContent className="pt-6"><div className="flex items-center gap-4"><span className="text-sm font-medium">Filter by priority:</span>
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}><SelectTrigger className="w-48"><SelectValue placeholder="Filter by priority" /></SelectTrigger><SelectContent><SelectItem value="all">All Priorities</SelectItem><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem><SelectItem value="emergency">Emergency</SelectItem></SelectContent></Select>
+          </div></CardContent></Card>
 
-              return (
-                <div key={status} className="flex flex-col min-h-[500px]">
-                  <Card className="mb-3">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className={`p-1.5 rounded ${config.color}`}>
-                            <Icon className="h-4 w-4 text-white" />
-                          </div>
-                          <CardTitle className="text-base">{config.label}</CardTitle>
-                        </div>
-                        <Badge variant="secondary">{orders.length}</Badge>
-                      </div>
-                    </CardHeader>
-                  </Card>
-
-                  <Droppable droppableId={status}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={`flex-1 space-y-3 p-2 rounded-lg transition-colors ${
-                          snapshot.isDraggingOver ? 'bg-accent/50' : ''
-                        }`}
-                      >
-                        {orders.map((order, index) => (
-                          <Draggable key={order.id} draggableId={order.id} index={index}>
-                            {(provided, snapshot) => (
-                              <Card
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className={`cursor-pointer hover:shadow-md transition-shadow ${
-                                  snapshot.isDragging ? 'shadow-lg rotate-2' : ''
-                                }`}
-                                onClick={() => openOrderDetail(order)}
-                              >
-                                <CardHeader className="pb-3">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <CardTitle className="text-sm line-clamp-2 flex-1">
-                                      {order.title}
-                                    </CardTitle>
-                                    <Badge
-                                      variant="secondary"
-                                      className={`${priorityColors[order.priority]} text-white text-xs flex-shrink-0`}
-                                    >
-                                      {order.priority}
-                                    </Badge>
-                                  </div>
-                                  <CardDescription className="text-xs">{order.category}</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-2">
-                                  <p className="text-xs text-muted-foreground line-clamp-2">
-                                    {order.description}
-                                  </p>
-
-                                  {order.estimatedCost && (
-                                    <div className="flex items-center gap-1 text-xs">
-                                      <DollarSign className="h-3 w-3 text-muted-foreground" />
-                                      <span className="font-medium">${order.estimatedCost}</span>
-                                    </div>
-                                  )}
-
-                                  <div className="text-xs text-muted-foreground pt-2 border-t">
-                                    {formatDate(order.createdAt)}
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                        {orders.length === 0 && (
-                          <div className="text-center text-sm text-muted-foreground py-8">
-                            No orders
+          {isLoading ? <Card><CardContent className="p-6">Loading work orders...</CardContent></Card> : (
+            <DragDropContext onDragEnd={onDragEnd}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {statusOrder.map((status) => {
+                  const config = statusConfig[status];
+                  const orders = getOrdersByStatus(status);
+                  const Icon = config.icon;
+                  return (
+                    <div key={status} className="flex flex-col min-h-[500px]">
+                      <Card className="mb-3"><CardHeader className="pb-3"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className={`p-1.5 rounded ${config.color}`}><Icon className="h-4 w-4 text-white" /></div><CardTitle className="text-base">{config.label}</CardTitle></div><Badge variant="secondary">{orders.length}</Badge></div></CardHeader></Card>
+                      <Droppable droppableId={status}>
+                        {(provided, snapshot) => (
+                          <div ref={provided.innerRef} {...provided.droppableProps} className={`flex-1 space-y-3 p-2 rounded-lg transition-colors ${snapshot.isDraggingOver ? 'bg-accent/50' : ''}`}>
+                            {orders.map((order, index) => (
+                              <Draggable key={order.id} draggableId={order.id} index={index}>
+                                {(provided, snapshot) => (
+                                  <Card ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className={`cursor-pointer hover:shadow-md transition-shadow ${snapshot.isDragging ? 'shadow-lg rotate-2' : ''}`} onClick={() => { setSelectedOrder(order); setIsDetailOpen(true); }}>
+                                    <CardHeader className="pb-3"><div className="flex items-start justify-between gap-2"><CardTitle className="text-sm line-clamp-2 flex-1">{order.title}</CardTitle><Badge variant="secondary" className={`${priorityColors[order.priority]} text-white text-xs flex-shrink-0`}>{order.priority}</Badge></div><CardDescription className="text-xs">{order.category}</CardDescription></CardHeader>
+                                    <CardContent className="space-y-2"><p className="text-xs text-muted-foreground line-clamp-2">{order.description}</p>{order.estimatedCost && <div className="flex items-center gap-1 text-xs"><DollarSign className="h-3 w-3 text-muted-foreground" /><span className="font-medium">${order.estimatedCost}</span></div>}<div className="text-xs text-muted-foreground pt-2 border-t">{formatDate(order.createdAt)}</div></CardContent>
+                                  </Card>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                            {orders.length === 0 && <div className="text-center text-sm text-muted-foreground py-8">No orders</div>}
                           </div>
                         )}
-                      </div>
-                    )}
-                  </Droppable>
-                </div>
-              );
-            })}
-          </div>
-        </DragDropContext>
-      )}
-
-      {/* Work Order Detail Dialog */}
-      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-2xl">
-          {selectedOrder && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Wrench className="h-5 w-5" />
-                  {selectedOrder.title}
-                </DialogTitle>
-                <DialogDescription>
-                  Work Order #{selectedOrder.id} - {selectedOrder.category}
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-4 mt-4">
-                {/* Status and Priority */}
-                <div className="flex gap-2">
-                  <Badge
-                    variant="outline"
-                    className={`${statusConfig[selectedOrder.status].color} text-white capitalize`}
-                  >
-                    {getStatusIcon(selectedOrder.status)}
-                    <span className="ml-1">{statusConfig[selectedOrder.status].label}</span>
-                  </Badge>
-                  <Badge
-                    variant="secondary"
-                    className={`${priorityColors[selectedOrder.priority]} text-white capitalize`}
-                  >
-                    {selectedOrder.priority}
-                  </Badge>
-                </div>
-
-                {/* Description */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Description</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm">{selectedOrder.description}</p>
-                  </CardContent>
-                </Card>
-
-                {/* Details */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Details</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Property ID:</span>
-                      <span className="font-medium">{selectedOrder.propertyId}</span>
+                      </Droppable>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Unit ID:</span>
-                      <span className="font-medium">{selectedOrder.unitId}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Tenant ID:</span>
-                      <span className="font-medium">{selectedOrder.tenantId}</span>
-                    </div>
-                    {selectedOrder.assignedVendorId && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Assigned Vendor:</span>
-                        <span className="font-medium">{selectedOrder.assignedVendorId}</span>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Costs */}
-                {(selectedOrder.estimatedCost || selectedOrder.actualCost) && (
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">Cost Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {selectedOrder.estimatedCost && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Estimated Cost:</span>
-                          <span className="font-medium">${selectedOrder.estimatedCost}</span>
-                        </div>
-                      )}
-                      {selectedOrder.actualCost && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Actual Cost:</span>
-                          <span className="font-medium">${selectedOrder.actualCost}</span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Timeline */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Timeline</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Created:</span>
-                      <span className="font-medium">{formatDate(selectedOrder.createdAt)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Last Updated:</span>
-                      <span className="font-medium">{formatDate(selectedOrder.updatedAt)}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Actions */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Change Status</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Select
-                      value={selectedOrder.status}
-                      onValueChange={(value) => handleStatusChange(selectedOrder.id, value as WorkOrder['status'])}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="new">New</SelectItem>
-                        <SelectItem value="assigned">Assigned</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </CardContent>
-                </Card>
+                  );
+                })}
               </div>
-            </>
+            </DragDropContext>
           )}
-        </DialogContent>
-      </Dialog>
+        </TabsContent>
+
+        <TabsContent value="requests" className="mt-4">
+          <RequestsPanel requests={requests} searchQuery={requestSearch} onSearchChange={setRequestSearch} onConvertToWorkOrder={handleConvertRequest} onDeclineRequest={handleDeclineRequest} />
+        </TabsContent>
+
+        <TabsContent value="analytics" className="mt-4">
+          <AnalyticsTab workOrders={workOrders} vendors={vendors} timeRange={analyticsTimeRange} onTimeRangeChange={setAnalyticsTimeRange} />
+        </TabsContent>
+      </Tabs>
+
+      <CreateWorkOrderModal open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen} vendors={vendors} teams={mockTeams} onCreateWorkOrder={handleCreateWorkOrder} requestToConvert={requestToConvert ? { id: requestToConvert.id, title: requestToConvert.title, description: requestToConvert.description, category: requestToConvert.category, priority: requestToConvert.priority, tenantId: requestToConvert.tenantId, tenantName: requestToConvert.tenantName, unitId: requestToConvert.unitId, propertyId: requestToConvert.propertyId, propertyName: requestToConvert.propertyName } : undefined} />
+      <WorkOrderDetailPanel workOrder={selectedOrder} open={isDetailOpen} onOpenChange={setIsDetailOpen} vendors={vendors} onUpdateWorkOrder={handleUpdateWorkOrder} />
     </div>
   );
 };

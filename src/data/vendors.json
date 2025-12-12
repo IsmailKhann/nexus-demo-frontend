@@ -1,0 +1,57 @@
+[
+  {
+    "id": "vendor-1",
+    "name": "ABC Plumbing Services",
+    "category": "Plumbing",
+    "phone": "(555) 123-4567",
+    "email": "service@abcplumbing.com",
+    "rating": 4.8,
+    "completedJobs": 156,
+    "avgResponseTime": 2.5,
+    "status": "active"
+  },
+  {
+    "id": "vendor-2",
+    "name": "Elite HVAC Solutions",
+    "category": "HVAC",
+    "phone": "(555) 234-5678",
+    "email": "contact@elitehvac.com",
+    "rating": 4.6,
+    "completedJobs": 89,
+    "avgResponseTime": 3.2,
+    "status": "active"
+  },
+  {
+    "id": "vendor-3",
+    "name": "Quick Fix Handyman",
+    "category": "General Maintenance",
+    "phone": "(555) 345-6789",
+    "email": "jobs@quickfix.com",
+    "rating": 4.5,
+    "completedJobs": 234,
+    "avgResponseTime": 1.8,
+    "status": "active"
+  },
+  {
+    "id": "vendor-4",
+    "name": "Sparks Electrical",
+    "category": "Electrical",
+    "phone": "(555) 456-7890",
+    "email": "support@sparkselectric.com",
+    "rating": 4.9,
+    "completedJobs": 112,
+    "avgResponseTime": 2.1,
+    "status": "active"
+  },
+  {
+    "id": "vendor-5",
+    "name": "Premier Appliance Repair",
+    "category": "Appliance",
+    "phone": "(555) 567-8901",
+    "email": "repairs@premierapp.com",
+    "rating": 4.4,
+    "completedJobs": 78,
+    "avgResponseTime": 4.0,
+    "status": "active"
+  }
+]
