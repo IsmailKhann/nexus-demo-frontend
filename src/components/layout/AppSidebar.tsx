@@ -101,13 +101,37 @@ const tenantNavigation = [
   },
 ];
 
+// Technician navigation
+const technicianNavigation = [
+  {
+    title: 'Home',
+    items: [
+      { title: 'My Portal', url: '/technician-portal', icon: Home },
+    ],
+  },
+  {
+    title: 'Work',
+    items: [
+      { title: 'Work Orders', url: '/technician-portal', icon: Wrench },
+    ],
+  },
+  {
+    title: 'Account',
+    items: [
+      { title: 'My Profile', url: '/technician-portal', icon: Star },
+      { title: 'Settings', url: '/settings', icon: Settings },
+    ],
+  },
+];
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
   const currentUser = getCurrentUser();
 
   const isTenant = currentUser?.role === 'tenant';
-  const navigation = isTenant ? tenantNavigation : managerNavigation;
+  const isTechnician = currentUser?.role === 'technician';
+  const navigation = isTenant ? tenantNavigation : isTechnician ? technicianNavigation : managerNavigation;
 
   const isActive = (path: string) => location.pathname === path;
   const isCollapsed = state === 'collapsed';
@@ -123,7 +147,7 @@ export function AppSidebar() {
             <div>
               <h2 className="font-bold text-lg">Nexus</h2>
               <p className="text-xs text-sidebar-foreground/70">
-                {isTenant ? 'Tenant Portal' : 'CRM + PMS'}
+                {isTenant ? 'Tenant Portal' : isTechnician ? 'Technician Portal' : 'CRM + PMS'}
               </p>
             </div>
           )}

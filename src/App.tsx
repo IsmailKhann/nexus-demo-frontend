@@ -21,6 +21,7 @@ import Settings from "./pages/Settings";
 import Inbox from "./pages/Inbox";
 import Properties from "./pages/Properties";
 import TenantPortal from "./pages/TenantPortal";
+import TechnicianPortal from "./pages/TechnicianPortal";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,10 @@ const App = () => (
             <Route
               path="/tenant-portal"
               element={<TenantPortal />}
+            />
+            <Route
+              path="/technician-portal"
+              element={<TechnicianPortal />}
             />
           </Route>
 
