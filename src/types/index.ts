@@ -1,6 +1,6 @@
 // Core type definitions for Nexus
 
-export type UserRole = 'admin' | 'property_manager' | 'leasing_agent' | 'maintenance_tech' | 'owner' | 'tenant';
+export type UserRole = 'admin' | 'property_manager' | 'leasing_agent' | 'maintenance_tech' | 'owner' | 'tenant' | 'technician';
 
 export interface User {
   id: string;

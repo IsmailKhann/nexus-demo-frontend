@@ -37,8 +37,14 @@ const Auth = () => {
         title: 'Welcome to Nexus!',
         description: 'Successfully logged in',
       });
-      // Redirect tenants to tenant portal, others to dashboard
-      navigate(role === 'tenant' ? '/tenant-portal' : '/dashboard');
+      // Redirect based on role
+      if (role === 'tenant') {
+        navigate('/tenant-portal');
+      } else if (role === 'technician') {
+        navigate('/technician-portal');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error) {
       toast({
         title: 'Login failed',
@@ -113,6 +119,7 @@ const Auth = () => {
                     <SelectItem value="maintenance_tech">Maintenance Tech</SelectItem>
                     <SelectItem value="owner">Owner</SelectItem>
                     <SelectItem value="tenant">Tenant</SelectItem>
+                    <SelectItem value="technician">Technician / Vendor</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -174,10 +181,10 @@ const Auth = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => quickLogin('owner')}
+                  onClick={() => quickLogin('technician')}
                   type="button"
                 >
-                  Owner
+                  Technician
                 </Button>
               </div>
             </div>
