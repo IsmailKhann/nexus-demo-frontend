@@ -20,6 +20,7 @@ import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Inbox from "./pages/Inbox";
 import Properties from "./pages/Properties";
+import TenantPortal from "./pages/TenantPortal";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,10 @@ const App = () => (
             <Route
               path="/settings"
               element={<Settings />}
+            />
+            <Route
+              path="/tenant-portal"
+              element={<TenantPortal />}
             />
           </Route>
 
