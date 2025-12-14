@@ -8,3 +8,8 @@ export { StepEditor } from './StepEditor';
 export { StepCustomerList } from './StepCustomerList';
 export { DripTriggerModal } from './DripTriggerModal';
 export { FlowEditorPanel } from './FlowEditorPanel';
+export { CreateBlockModal } from './CreateBlockModal';
+export { BlockSettingsModal } from './BlockSettingsModal';
+export type { BlockSettings } from './BlockSettingsModal';
+export { RunTriggerModal } from './RunTriggerModal';
+export type { TriggerRunConfig } from './RunTriggerModal';
