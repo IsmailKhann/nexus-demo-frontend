@@ -42,7 +42,8 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   BlockCard, 
   FlowEditorPanel, 
-  useFlowEditor 
+  useFlowEditor,
+  CreateBlockModal
 } from "./drip-sequence";
 
 export function DripSequenceTab() {
@@ -53,6 +54,7 @@ export function DripSequenceTab() {
   const flowEditor = useFlowEditor();
   const [flowPanelOpen, setFlowPanelOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [createBlockModalOpen, setCreateBlockModalOpen] = useState(false);
 
   // Automation Engine State
   const {
@@ -323,6 +325,14 @@ export function DripSequenceTab() {
                 <span className="text-sm text-muted-foreground">
                   {flowEditor.blocks.length} blocks configured
                 </span>
+                <Button 
+                  size="sm" 
+                  className="gap-2 ml-2"
+                  onClick={() => setCreateBlockModalOpen(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Create Block
+                </Button>
               </div>
             </div>
 
@@ -775,6 +785,33 @@ export function DripSequenceTab() {
           if (flowEditor.selectedBlockId) {
             flowEditor.moveCustomerToStep(flowEditor.selectedBlockId, fromStepId, toStepId, customerId);
           }
+        }}
+        onUpdateBlockSettings={(updates) => {
+          if (flowEditor.selectedBlockId) {
+            flowEditor.updateBlockSettings(flowEditor.selectedBlockId, updates);
+          }
+        }}
+        onToggleBlockActive={() => {
+          if (flowEditor.selectedBlockId) {
+            flowEditor.toggleBlockActive(flowEditor.selectedBlockId);
+          }
+        }}
+        onRunTrigger={(config) => {
+          if (flowEditor.selectedBlockId) {
+            flowEditor.runTrigger(flowEditor.selectedBlockId, config);
+          }
+        }}
+      />
+
+      {/* Create Block Modal */}
+      <CreateBlockModal
+        open={createBlockModalOpen}
+        onOpenChange={setCreateBlockModalOpen}
+        onCreateBlock={(config) => {
+          const newBlockId = flowEditor.createBlock(config);
+          toast({ title: "Block created", description: `${config.name} has been created.` });
+          flowEditor.selectBlock(newBlockId);
+          setFlowPanelOpen(true);
         }}
       />
 

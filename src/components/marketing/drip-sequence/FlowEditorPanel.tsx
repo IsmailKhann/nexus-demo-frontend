@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { 
@@ -23,6 +22,8 @@ import { FlowStepNode } from "./FlowStepNode";
 import { StepEditor } from "./StepEditor";
 import { StepCustomerList } from "./StepCustomerList";
 import { DripTriggerModal } from "./DripTriggerModal";
+import { BlockSettingsModal, BlockSettings } from "./BlockSettingsModal";
+import { RunTriggerModal, TriggerRunConfig } from "./RunTriggerModal";
 import { useToast } from "@/hooks/use-toast";
 
 const iconMap: Record<string, React.FC<{ className?: string }>> = {
@@ -47,6 +48,9 @@ interface FlowEditorPanelProps {
   onAddCustomer: (stepId: string, customer: any) => void;
   onRemoveCustomer: (stepId: string, customerId: string) => void;
   onMoveCustomer: (fromStepId: string, toStepId: string, customerId: string) => void;
+  onUpdateBlockSettings: (updates: Partial<DripBlock> & { settings?: BlockSettings }) => void;
+  onToggleBlockActive: () => void;
+  onRunTrigger: (config: TriggerRunConfig) => void;
 }
 
 export function FlowEditorPanel({
@@ -64,16 +68,26 @@ export function FlowEditorPanel({
   onAddCustomer,
   onRemoveCustomer,
   onMoveCustomer,
+  onUpdateBlockSettings,
+  onToggleBlockActive,
+  onRunTrigger,
 }: FlowEditorPanelProps) {
   const { toast } = useToast();
   const [dripModalOpen, setDripModalOpen] = useState(false);
   const [dripModalStepId, setDripModalStepId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'flow' | 'edit'>('flow');
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [runTriggerModalOpen, setRunTriggerModalOpen] = useState(false);
 
   if (!block) return null;
 
   const Icon = iconMap[block.icon] || Route;
   const dripModalStep = block.steps.find(s => s.id === dripModalStepId);
+
+  // Check if manual initiation is allowed (for showing Run Trigger button)
+  const showRunTrigger = block.type === 'community-message' || 
+                         block.type === 'reminders' || 
+                         block.allowedTriggers.includes('manual_only');
 
   const handleOpenDripConfig = (stepId: string) => {
     setDripModalStepId(stepId);
@@ -85,6 +99,24 @@ export function FlowEditorPanel({
       onUpdateStep(dripModalStepId, { trigger });
       toast({ title: "Trigger saved", description: "The drip trigger has been updated." });
     }
+  };
+
+  const handleSettingsSave = (updates: Partial<DripBlock> & { settings?: BlockSettings }) => {
+    onUpdateBlockSettings(updates);
+    toast({ title: "Settings saved", description: "Block settings have been updated." });
+  };
+
+  const handleRunTrigger = (config: TriggerRunConfig) => {
+    onRunTrigger(config);
+    const actionText = config.mode === 'once' 
+      ? (config.runImmediately ? 'Trigger executed' : 'Trigger scheduled')
+      : 'Series created';
+    toast({ 
+      title: actionText, 
+      description: config.mode === 'once' && config.runImmediately
+        ? `${block.name} is now running for selected audience.`
+        : `${block.name} has been scheduled.`
+    });
   };
 
   return (
@@ -109,9 +141,13 @@ export function FlowEditorPanel({
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <SheetTitle className="text-lg">{block.name}</SheetTitle>
-                  {block.isActive && (
+                  {block.isActive ? (
                     <Badge className="text-xs bg-emerald-50 text-emerald-600 border-emerald-200">
                       Active
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-xs">
+                      Paused
                     </Badge>
                   )}
                 </div>
@@ -120,15 +156,38 @@ export function FlowEditorPanel({
                 </SheetDescription>
               </div>
               <div className="flex gap-2 shrink-0">
-                <Button variant="outline" size="sm" className="gap-1">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="gap-1"
+                  onClick={() => setSettingsModalOpen(true)}
+                >
                   <Settings className="h-3.5 w-3.5" />
                 </Button>
-                <Button variant="outline" size="sm" className="gap-1">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="gap-1"
+                  onClick={onToggleBlockActive}
+                >
                   {block.isActive ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
                   {block.isActive ? 'Pause' : 'Activate'}
                 </Button>
               </div>
             </div>
+
+            {/* Run Trigger Button - Top Bar Action */}
+            {showRunTrigger && (
+              <div className="mt-3 pt-3 border-t">
+                <Button 
+                  className="w-full gap-2"
+                  onClick={() => setRunTriggerModalOpen(true)}
+                >
+                  <Play className="h-4 w-4" />
+                  Run / Start Trigger
+                </Button>
+              </div>
+            )}
           </SheetHeader>
 
           {/* Navigation when step is selected */}
@@ -250,6 +309,22 @@ export function FlowEditorPanel({
           onSave={handleSaveDripTrigger}
         />
       )}
+
+      {/* Block Settings Modal */}
+      <BlockSettingsModal
+        open={settingsModalOpen}
+        onOpenChange={setSettingsModalOpen}
+        block={block}
+        onSave={handleSettingsSave}
+      />
+
+      {/* Run Trigger Modal */}
+      <RunTriggerModal
+        open={runTriggerModalOpen}
+        onOpenChange={setRunTriggerModalOpen}
+        block={block}
+        onRunTrigger={handleRunTrigger}
+      />
     </>
   );
 }
