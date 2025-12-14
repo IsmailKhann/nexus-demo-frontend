@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Mail, MessageSquare, Zap, Plus, Edit, Play, Pause, 
   ChevronRight, Clock, GitBranch, User, Tag, CheckCircle,
   ArrowRight, Search, Filter, MoreVertical, Eye, Trash2, UserPlus,
-  RefreshCw, XCircle, RotateCcw, Activity
+  RefreshCw, XCircle, RotateCcw, Activity, Workflow
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAutomationEngine } from "@/hooks/useAutomationEngine";
@@ -36,6 +37,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  BlockCard, 
+  FlowEditorPanel, 
+  useFlowEditor 
+} from "./drip-sequence";
 
 const getStepIcon = (type: string, action: string) => {
   if (type === 'Delay') return <Clock className="h-4 w-4 text-muted-foreground" />;
@@ -70,6 +76,9 @@ const getLogStatusBadge = (status: string) => {
 };
 
 export function DripSequenceTab() {
+  // Flow Editor State
+  const flowEditor = useFlowEditor();
+  const [flowPanelOpen, setFlowPanelOpen] = useState(false);
   const { toast } = useToast();
   const {
     automations,
