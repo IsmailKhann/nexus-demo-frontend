@@ -13,3 +13,6 @@ export { BlockSettingsModal } from './BlockSettingsModal';
 export type { BlockSettings } from './BlockSettingsModal';
 export { RunTriggerModal } from './RunTriggerModal';
 export type { TriggerRunConfig } from './RunTriggerModal';
+export { AutomationSettingsModal } from './AutomationSettingsModal';
+export type { AutomationSettings } from './AutomationSettingsModal';
+export { CreateAutomationModal } from './CreateAutomationModal';
