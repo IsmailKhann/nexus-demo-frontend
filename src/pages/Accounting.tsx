@@ -6,134 +6,86 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
-  DollarSign, 
-  FileText, 
-  TrendingUp, 
-  Clock, 
-  CheckCircle, 
-  AlertCircle,
-  Download,
-  Upload,
-  Settings,
-  Search,
-  Filter,
-  RefreshCw,
-  CreditCard,
-  Building2,
-  Calendar,
-  ArrowUpRight,
-  ArrowDownRight
+  DollarSign, FileText, TrendingUp, Clock, CheckCircle, AlertCircle, Download, Upload, Settings, Search, Filter, RefreshCw, CreditCard, Building2, ArrowUpRight, ArrowDownRight, Plus, Eye, Edit, Send, Shield, Wallet, Users, FileSpreadsheet, AlertTriangle, ChevronRight
 } from 'lucide-react';
+import { useAccountingStore } from '@/hooks/useAccountingStore';
+import { calculateARAgingSummary } from '@/data/accountingData';
+import { LedgerDrilldownPanel } from '@/components/accounting/LedgerDrilldownPanel';
+import { AccountModal } from '@/components/accounting/AccountModal';
+import { ApplyPaymentModal } from '@/components/accounting/ApplyPaymentModal';
+import { PayBillModal } from '@/components/accounting/PayBillModal';
+import { ReleaseDepositModal } from '@/components/accounting/ReleaseDepositModal';
+import { OwnerStatementModal } from '@/components/accounting/OwnerStatementModal';
+import { RecordPaymentModal } from '@/components/accounting/RecordPaymentModal';
+import { AuditLogModal } from '@/components/accounting/AuditLogModal';
+import { ReportsTab } from '@/components/accounting/ReportsTab';
+import { KPIDrilldownPanel } from '@/components/accounting/KPIDrilldownPanel';
+import { toast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 const Accounting = () => {
+  const store = useAccountingStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [kpiPeriod, setKpiPeriod] = useState<'month' | 'quarter' | 'year'>('month');
+  
+  // Panel states
+  const [ledgerPanelOpen, setLedgerPanelOpen] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<typeof store.accounts[0] | null>(null);
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<typeof store.accounts[0] | null>(null);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<typeof store.invoices[0] | null>(null);
+  const [payBillModalOpen, setPayBillModalOpen] = useState(false);
+  const [selectedBill, setSelectedBill] = useState<typeof store.bills[0] | null>(null);
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [selectedDeposit, setSelectedDeposit] = useState<typeof store.securityDeposits[0] | null>(null);
+  const [statementModalOpen, setStatementModalOpen] = useState(false);
+  const [selectedStatement, setSelectedStatement] = useState<typeof store.ownerStatements[0] | null>(null);
+  const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
+  const [auditLogOpen, setAuditLogOpen] = useState(false);
+  const [kpiDrilldownOpen, setKpiDrilldownOpen] = useState(false);
+  const [kpiDrilldownType, setKpiDrilldownType] = useState<'revenue' | 'ar' | 'expenses' | 'netIncome' | 'trust' | null>(null);
+  const [arAgingFilter, setArAgingFilter] = useState<string>('');
 
-  // Mock data for GL accounts
-  const glAccounts = [
-    { id: '1000', name: 'Cash', type: 'Asset', balance: 125000, status: 'active' },
-    { id: '1200', name: 'Accounts Receivable', type: 'Asset', balance: 45000, status: 'active' },
-    { id: '1500', name: 'Security Deposits Held', type: 'Asset', balance: 85000, status: 'active' },
-    { id: '2000', name: 'Accounts Payable', type: 'Liability', balance: -32000, status: 'active' },
-    { id: '2100', name: 'Tenant Deposits', type: 'Liability', balance: -85000, status: 'active' },
-    { id: '4000', name: 'Rental Income', type: 'Revenue', balance: 250000, status: 'active' },
-    { id: '5000', name: 'Property Maintenance', type: 'Expense', balance: 35000, status: 'active' },
-    { id: '5100', name: 'Utilities', type: 'Expense', balance: 12000, status: 'active' },
-  ];
-
-  // Mock data for AR invoices
-  const arInvoices = [
-    { 
-      id: 'INV-001', 
-      tenant: 'John Doe', 
-      property: '123 Main St #101', 
-      amount: 2500, 
-      dueDate: '2025-02-01', 
-      status: 'pending',
-      daysOverdue: 0
-    },
-    { 
-      id: 'INV-002', 
-      tenant: 'Jane Smith', 
-      property: '456 Oak Ave #202', 
-      amount: 3200, 
-      dueDate: '2025-01-15', 
-      status: 'overdue',
-      daysOverdue: 23
-    },
-    { 
-      id: 'INV-003', 
-      tenant: 'Bob Johnson', 
-      property: '789 Pine Rd #303', 
-      amount: 2800, 
-      dueDate: '2025-02-05', 
-      status: 'pending',
-      daysOverdue: 0
-    },
-    { 
-      id: 'INV-004', 
-      tenant: 'Sarah Williams', 
-      property: '321 Elm St #404', 
-      amount: 2500, 
-      dueDate: '2025-01-20', 
-      status: 'paid',
-      daysOverdue: 0
-    },
-  ];
-
-  // Mock data for payments
-  const payments = [
-    { 
-      id: 'PAY-001', 
-      date: '2025-01-20', 
-      tenant: 'Sarah Williams', 
-      amount: 2500, 
-      method: 'ACH',
-      status: 'completed',
-      reference: 'INV-004'
-    },
-    { 
-      id: 'PAY-002', 
-      date: '2025-01-18', 
-      tenant: 'Mike Davis', 
-      amount: 3000, 
-      method: 'Credit Card',
-      status: 'completed',
-      reference: 'INV-005'
-    },
-    { 
-      id: 'PAY-003', 
-      date: '2025-01-15', 
-      tenant: 'Lisa Anderson', 
-      amount: 2700, 
-      method: 'Check',
-      status: 'processing',
-      reference: 'INV-006'
-    },
-  ];
+  const arAging = calculateARAgingSummary(store.invoices);
+  
+  const openKpiDrilldown = (type: typeof kpiDrilldownType, agingBucket?: string) => {
+    setKpiDrilldownType(type);
+    setArAgingFilter(agingBucket || '');
+    setKpiDrilldownOpen(true);
+  };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline", icon: any }> = {
       active: { variant: 'default', icon: CheckCircle },
-      pending: { variant: 'secondary', icon: Clock },
-      overdue: { variant: 'destructive', icon: AlertCircle },
-      paid: { variant: 'default', icon: CheckCircle },
-      completed: { variant: 'default', icon: CheckCircle },
-      processing: { variant: 'secondary', icon: Clock },
+      Open: { variant: 'secondary', icon: Clock },
+      Overdue: { variant: 'destructive', icon: AlertCircle },
+      Paid: { variant: 'default', icon: CheckCircle },
+      'Partially Paid': { variant: 'outline', icon: Clock },
+      Pending: { variant: 'secondary', icon: Clock },
+      Approved: { variant: 'default', icon: CheckCircle },
+      Cleared: { variant: 'default', icon: CheckCircle },
+      Held: { variant: 'secondary', icon: Shield },
+      Released: { variant: 'outline', icon: CheckCircle },
+      Draft: { variant: 'outline', icon: FileText },
+      Generated: { variant: 'secondary', icon: FileText },
+      Sent: { variant: 'default', icon: Send },
     };
-    
-    const config = variants[status] || variants.pending;
+    const config = variants[status] || { variant: 'outline' as const, icon: Clock };
     const Icon = config.icon;
-    
-    return (
-      <Badge variant={config.variant} className="gap-1">
-        <Icon className="h-3 w-3" />
-        {status}
-      </Badge>
-    );
+    return <Badge variant={config.variant} className="gap-1"><Icon className="h-3 w-3" />{status}</Badge>;
   };
+
+  const filteredAccounts = store.accounts.filter(a => {
+    if (searchTerm && !a.name.toLowerCase().includes(searchTerm.toLowerCase()) && !a.id.includes(searchTerm)) return false;
+    if (filterStatus !== 'all' && a.type.toLowerCase() !== filterStatus) return false;
+    return true;
+  });
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -141,414 +93,367 @@ const Accounting = () => {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Accounting & Financials</h1>
-          <p className="text-muted-foreground">
-            Manage GL, AR, payments, and QuickBooks integration
-          </p>
+          <p className="text-muted-foreground">Manage GL, AR, AP, payments, and QuickBooks integration</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
-          <Button className="gap-2">
-            <Upload className="h-4 w-4" />
-            Import
-          </Button>
+          <Button variant="outline" size="sm" onClick={() => setAuditLogOpen(true)}><Shield className="h-4 w-4 mr-1" />Audit Log</Button>
+          <Button variant="outline" size="sm"><Download className="h-4 w-4 mr-1" />Export</Button>
+          <Button size="sm"><Upload className="h-4 w-4 mr-1" />Import</Button>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => openKpiDrilldown('revenue')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$250,000</div>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <ArrowUpRight className="h-3 w-3 text-green-500" />
-              <span className="text-green-500">+12.5%</span> from last month
-            </p>
+            <div className="text-2xl font-bold">$250,500</div>
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><ArrowUpRight className="h-3 w-3 text-green-500" /><span className="text-green-500">+12.5%</span> from last month</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => openKpiDrilldown('ar')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Accounts Receivable</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$45,000</div>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <ArrowDownRight className="h-3 w-3 text-red-500" />
-              <span className="text-red-500">3 overdue</span> invoices
-            </p>
+            <div className="text-2xl font-bold">${(arAging.current + arAging['1-30'] + arAging['31-60'] + arAging['61+']).toLocaleString()}</div>
+            <div className="flex gap-1 mt-1 flex-wrap">
+              <Badge variant="outline" className="text-xs cursor-pointer" onClick={(e) => { e.stopPropagation(); openKpiDrilldown('ar', 'Current'); }}>0: ${(arAging.current / 1000).toFixed(0)}k</Badge>
+              <Badge variant="outline" className="text-xs cursor-pointer" onClick={(e) => { e.stopPropagation(); openKpiDrilldown('ar', '1-30'); }}>1-30: ${(arAging['1-30'] / 1000).toFixed(0)}k</Badge>
+              <Badge variant="destructive" className="text-xs cursor-pointer" onClick={(e) => { e.stopPropagation(); openKpiDrilldown('ar', '61+'); }}>{arAging.overdueCount} overdue</Badge>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => openKpiDrilldown('expenses')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$47,000</div>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <ArrowUpRight className="h-3 w-3 text-red-500" />
-              <span className="text-red-500">+8.2%</span> from last month
-            </p>
+            <div className="text-2xl font-bold">$47,500</div>
+            <p className="text-xs text-muted-foreground">Operating: $92K • CapEx: $45K</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => openKpiDrilldown('netIncome')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Net Income</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">$203,000</div>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <ArrowUpRight className="h-3 w-3 text-green-500" />
-              <span className="text-green-500">+15.3%</span> from last month
-            </p>
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><ArrowUpRight className="h-3 w-3 text-green-500" />NOI: 81.0%</p>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => openKpiDrilldown('trust')}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Trust Account</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-primary">$185,000</div>
+            <p className="text-xs text-muted-foreground">Deposits held in trust</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Content Tabs */}
-      <Tabs defaultValue="gl" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="gl">General Ledger</TabsTrigger>
-          <TabsTrigger value="ar">Accounts Receivable</TabsTrigger>
-          <TabsTrigger value="payments">Payments</TabsTrigger>
-          <TabsTrigger value="quickbooks">QuickBooks</TabsTrigger>
-        </TabsList>
+      {/* Main Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="lg:col-span-3">
+          <Tabs defaultValue="gl" className="space-y-4">
+            <TabsList className="flex-wrap h-auto">
+              <TabsTrigger value="gl">General Ledger</TabsTrigger>
+              <TabsTrigger value="ar">Accounts Receivable</TabsTrigger>
+              <TabsTrigger value="ap">Accounts Payable</TabsTrigger>
+              <TabsTrigger value="payments">Payments</TabsTrigger>
+              <TabsTrigger value="deposits">Security Deposits</TabsTrigger>
+              <TabsTrigger value="statements">Owner Statements</TabsTrigger>
+              <TabsTrigger value="quickbooks">QuickBooks</TabsTrigger>
+              <TabsTrigger value="reports">Reports</TabsTrigger>
+            </TabsList>
 
-        {/* General Ledger Tab */}
-        <TabsContent value="gl" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Chart of Accounts</CardTitle>
-                  <CardDescription>Manage your general ledger accounts</CardDescription>
-                </div>
-                <Button className="gap-2">
-                  <FileText className="h-4 w-4" />
-                  New Account
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-2 mb-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search accounts..."
-                    className="pl-8"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="w-[180px]">
-                    <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Filter by type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="asset">Asset</SelectItem>
-                    <SelectItem value="liability">Liability</SelectItem>
-                    <SelectItem value="revenue">Revenue</SelectItem>
-                    <SelectItem value="expense">Expense</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="border rounded-lg">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Account #</TableHead>
-                      <TableHead>Account Name</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead className="text-right">Balance</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {glAccounts.map((account) => (
-                      <TableRow key={account.id}>
-                        <TableCell className="font-medium">{account.id}</TableCell>
-                        <TableCell>{account.name}</TableCell>
-                        <TableCell>{account.type}</TableCell>
-                        <TableCell className="text-right font-mono">
-                          ${Math.abs(account.balance).toLocaleString()}
-                        </TableCell>
-                        <TableCell>{getStatusBadge(account.status)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm">View</Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Accounts Receivable Tab */}
-        <TabsContent value="ar" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Invoices</CardTitle>
-                  <CardDescription>Track and manage tenant invoices</CardDescription>
-                </div>
-                <Button className="gap-2">
-                  <FileText className="h-4 w-4" />
-                  Create Invoice
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="border rounded-lg">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Invoice #</TableHead>
-                      <TableHead>Tenant</TableHead>
-                      <TableHead>Property</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {arInvoices.map((invoice) => (
-                      <TableRow key={invoice.id}>
-                        <TableCell className="font-medium">{invoice.id}</TableCell>
-                        <TableCell>{invoice.tenant}</TableCell>
-                        <TableCell>{invoice.property}</TableCell>
-                        <TableCell className="text-right font-mono">
-                          ${invoice.amount.toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            {invoice.dueDate}
-                            {invoice.daysOverdue > 0 && (
-                              <span className="text-xs text-destructive">
-                                ({invoice.daysOverdue}d overdue)
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(invoice.status)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm">View</Button>
-                          <Button variant="ghost" size="sm">Send</Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Payments Tab */}
-        <TabsContent value="payments" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Payment History</CardTitle>
-                  <CardDescription>View and manage payment transactions</CardDescription>
-                </div>
-                <Button className="gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  Record Payment
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="border rounded-lg">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Payment #</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Tenant</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Reference</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {payments.map((payment) => (
-                      <TableRow key={payment.id}>
-                        <TableCell className="font-medium">{payment.id}</TableCell>
-                        <TableCell>{payment.date}</TableCell>
-                        <TableCell>{payment.tenant}</TableCell>
-                        <TableCell className="text-right font-mono">
-                          ${payment.amount.toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{payment.method}</Badge>
-                        </TableCell>
-                        <TableCell>{payment.reference}</TableCell>
-                        <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm">View</Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* QuickBooks Integration Tab */}
-        <TabsContent value="quickbooks" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                QuickBooks Integration
-              </CardTitle>
-              <CardDescription>
-                Sync your financial data with QuickBooks Online
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Connection Status */}
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Building2 className="h-5 w-5 text-primary" />
+            {/* General Ledger */}
+            <TabsContent value="gl">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div><CardTitle>Chart of Accounts</CardTitle><CardDescription>Manage your general ledger accounts</CardDescription></div>
+                    <Button onClick={() => { setEditingAccount(null); setAccountModalOpen(true); }}><Plus className="h-4 w-4 mr-1" />New Account</Button>
                   </div>
-                  <div>
-                    <p className="font-medium">QuickBooks Online</p>
-                    <p className="text-sm text-muted-foreground">Connected to Nexus Property Management</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-2 mb-4">
+                    <div className="relative flex-1"><Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search accounts..." className="pl-8" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+                    <Select value={filterStatus} onValueChange={setFilterStatus}><SelectTrigger className="w-[180px]"><Filter className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All Types</SelectItem><SelectItem value="asset">Asset</SelectItem><SelectItem value="liability">Liability</SelectItem><SelectItem value="equity">Equity</SelectItem><SelectItem value="revenue">Revenue</SelectItem><SelectItem value="expense">Expense</SelectItem></SelectContent></Select>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="default" className="gap-1">
-                    <CheckCircle className="h-3 w-3" />
-                    Connected
-                  </Badge>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Settings className="h-4 w-4" />
-                    Configure
-                  </Button>
-                </div>
-              </div>
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader><TableRow><TableHead>Account #</TableHead><TableHead>Account Name</TableHead><TableHead>Type</TableHead><TableHead>Parent</TableHead><TableHead>Normal</TableHead><TableHead className="text-right">Balance</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                      <TableBody>
+                        {filteredAccounts.map((account) => (
+                          <TableRow key={account.id}>
+                            <TableCell className="font-mono">{account.id}</TableCell>
+                            <TableCell className="font-medium">{account.name}</TableCell>
+                            <TableCell><Badge variant="outline">{account.type}</Badge></TableCell>
+                            <TableCell className="text-muted-foreground">{account.parent || '-'}</TableCell>
+                            <TableCell>{account.normal_balance}</TableCell>
+                            <TableCell className="text-right font-mono">${Math.abs(account.balance).toLocaleString()}</TableCell>
+                            <TableCell>{getStatusBadge(account.status)}</TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm" onClick={() => { setSelectedAccount(account); setLedgerPanelOpen(true); }}><Eye className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="sm" onClick={() => { setEditingAccount(account); setAccountModalOpen(true); }} disabled={account.system}><Edit className="h-4 w-4" /></Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-              {/* Sync Status */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Sync Status</h3>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <RefreshCw className="h-4 w-4" />
-                    Sync Now
-                  </Button>
-                </div>
+            {/* AR Tab */}
+            <TabsContent value="ar">
+              <Card>
+                <CardHeader><div className="flex items-center justify-between"><div><CardTitle>Invoices</CardTitle><CardDescription>Track and manage tenant invoices</CardDescription></div><Button><Plus className="h-4 w-4 mr-1" />Create Invoice</Button></div></CardHeader>
+                <CardContent>
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader><TableRow><TableHead>Invoice #</TableHead><TableHead>Tenant</TableHead><TableHead>Property</TableHead><TableHead className="text-right">Total</TableHead><TableHead className="text-right">Balance</TableHead><TableHead>Due Date</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                      <TableBody>
+                        {store.invoices.map((inv) => (
+                          <TableRow key={inv.id}>
+                            <TableCell className="font-mono">{inv.id}</TableCell>
+                            <TableCell>{inv.tenant}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{inv.property}</TableCell>
+                            <TableCell className="text-right font-mono">${inv.total.toLocaleString()}</TableCell>
+                            <TableCell className="text-right font-mono">${inv.balance.toLocaleString()}</TableCell>
+                            <TableCell>{inv.due_date}</TableCell>
+                            <TableCell>{getStatusBadge(inv.status)}</TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
+                              {inv.balance > 0 && <Button variant="ghost" size="sm" onClick={() => { setSelectedInvoice(inv); setPaymentModalOpen(true); }}><DollarSign className="h-4 w-4" /></Button>}
+                              {inv.status === 'Overdue' && <Button variant="ghost" size="sm" onClick={() => toast({ title: 'Reminder Sent', description: `Email sent to ${inv.tenant}` })}><Send className="h-4 w-4" /></Button>}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium">Last Sync</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold">2 hours ago</p>
-                      <p className="text-xs text-muted-foreground">Jan 20, 2025 at 10:30 AM</p>
-                    </CardContent>
-                  </Card>
+            {/* AP Tab */}
+            <TabsContent value="ap">
+              <Card>
+                <CardHeader><div className="flex items-center justify-between"><div><CardTitle>Vendor Bills</CardTitle><CardDescription>Manage accounts payable</CardDescription></div><Button><Plus className="h-4 w-4 mr-1" />Create Bill</Button></div></CardHeader>
+                <CardContent>
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader><TableRow><TableHead>Bill #</TableHead><TableHead>Vendor</TableHead><TableHead>Property</TableHead><TableHead>Category</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Due Date</TableHead><TableHead>1099</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                      <TableBody>
+                        {store.bills.map((bill) => (
+                          <TableRow key={bill.id}>
+                            <TableCell className="font-mono">{bill.id}</TableCell>
+                            <TableCell className="font-medium">{bill.vendor}</TableCell>
+                            <TableCell className="text-muted-foreground">{bill.property}</TableCell>
+                            <TableCell>{bill.category}</TableCell>
+                            <TableCell className="text-right font-mono">${bill.total.toLocaleString()}</TableCell>
+                            <TableCell>{bill.due_date}</TableCell>
+                            <TableCell>{bill.is_1099 ? <Badge variant="outline">1099</Badge> : '-'}</TableCell>
+                            <TableCell>{getStatusBadge(bill.status)}</TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
+                              {bill.status === 'Pending' && <Button variant="ghost" size="sm" onClick={() => { store.approveBill(bill.id); toast({ title: 'Bill Approved' }); }}><CheckCircle className="h-4 w-4" /></Button>}
+                              {bill.status === 'Approved' && <Button variant="ghost" size="sm" onClick={() => { setSelectedBill(bill); setPayBillModalOpen(true); }}><DollarSign className="h-4 w-4" /></Button>}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium">Records Synced</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold">1,247</p>
-                      <p className="text-xs text-muted-foreground">Invoices, payments, and expenses</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
+            {/* Payments Tab */}
+            <TabsContent value="payments">
+              <Card>
+                <CardHeader><div className="flex items-center justify-between"><div><CardTitle>Payment History</CardTitle><CardDescription>All payment transactions</CardDescription></div><Button onClick={() => setRecordPaymentOpen(true)}><CreditCard className="h-4 w-4 mr-1" />Record Payment</Button></div></CardHeader>
+                <CardContent>
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader><TableRow><TableHead>Payment #</TableHead><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Payer/Payee</TableHead><TableHead>Property</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Method</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                      <TableBody>
+                        {store.payments.map((pmt) => (
+                          <TableRow key={pmt.id}>
+                            <TableCell className="font-mono">{pmt.id}</TableCell>
+                            <TableCell>{pmt.date}</TableCell>
+                            <TableCell><Badge variant="outline">{pmt.type}</Badge></TableCell>
+                            <TableCell>{pmt.payer_payee}</TableCell>
+                            <TableCell className="text-muted-foreground">{pmt.property}</TableCell>
+                            <TableCell className="text-right font-mono">${pmt.amount.toLocaleString()}</TableCell>
+                            <TableCell><Badge variant="secondary">{pmt.method}</Badge></TableCell>
+                            <TableCell>{getStatusBadge(pmt.status)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-              {/* Sync Settings */}
-              <div className="space-y-4">
-                <h3 className="font-semibold">Sync Settings</h3>
+            {/* Security Deposits Tab */}
+            <TabsContent value="deposits">
+              <Card>
+                <CardHeader><CardTitle>Security Deposits</CardTitle><CardDescription>Trust account deposit ledger</CardDescription></CardHeader>
+                <CardContent>
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader><TableRow><TableHead>Deposit ID</TableHead><TableHead>Tenant</TableHead><TableHead>Property / Unit</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Move-In</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                      <TableBody>
+                        {store.securityDeposits.map((dep) => (
+                          <TableRow key={dep.id}>
+                            <TableCell className="font-mono">{dep.id}</TableCell>
+                            <TableCell className="font-medium">{dep.tenant}</TableCell>
+                            <TableCell>{dep.property} - {dep.unit}</TableCell>
+                            <TableCell className="text-right font-mono">${dep.amount.toLocaleString()}</TableCell>
+                            <TableCell>{dep.move_in_date}</TableCell>
+                            <TableCell>{getStatusBadge(dep.status)}</TableCell>
+                            <TableCell className="text-right">
+                              {dep.status === 'Held' && <Button variant="outline" size="sm" onClick={() => { setSelectedDeposit(dep); setDepositModalOpen(true); }}>Release</Button>}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Owner Statements Tab */}
+            <TabsContent value="statements">
+              <Card>
+                <CardHeader><div className="flex items-center justify-between"><div><CardTitle>Owner Statements</CardTitle><CardDescription>Generate and send owner distributions</CardDescription></div><Button><Plus className="h-4 w-4 mr-1" />New Statement</Button></div></CardHeader>
+                <CardContent>
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader><TableRow><TableHead>Statement ID</TableHead><TableHead>Owner</TableHead><TableHead>Property</TableHead><TableHead>Period</TableHead><TableHead className="text-right">Net to Owner</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                      <TableBody>
+                        {store.ownerStatements.map((stmt) => (
+                          <TableRow key={stmt.id}>
+                            <TableCell className="font-mono">{stmt.id}</TableCell>
+                            <TableCell className="font-medium">{stmt.owner}</TableCell>
+                            <TableCell>{stmt.property}</TableCell>
+                            <TableCell>{stmt.period_start} - {stmt.period_end}</TableCell>
+                            <TableCell className="text-right font-mono text-green-600">${stmt.net_to_owner.toLocaleString()}</TableCell>
+                            <TableCell>{getStatusBadge(stmt.status)}</TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm" onClick={() => { setSelectedStatement(stmt); setStatementModalOpen(true); }}><Eye className="h-4 w-4 mr-1" />View</Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* QuickBooks Tab */}
+            <TabsContent value="quickbooks">
+              <Card>
+                <CardHeader><CardTitle className="flex items-center gap-2"><Building2 className="h-5 w-5" />QuickBooks Integration</CardTitle><CardDescription>Sync your financial data with QuickBooks Online</CardDescription></CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center"><Building2 className="h-5 w-5 text-primary" /></div>
+                      <div><p className="font-medium">QuickBooks Online</p><p className="text-sm text-muted-foreground">{store.quickBooksState.isConnected ? store.quickBooksState.companyName : 'Not connected'}</p></div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={store.quickBooksState.isConnected ? 'default' : 'secondary'}>{store.quickBooksState.isConnected ? 'Connected' : 'Disconnected'}</Badge>
+                      {store.quickBooksState.isConnected ? (
+                        <Button variant="outline" size="sm" onClick={() => { store.disconnectQuickBooks(); }}>Disconnect</Button>
+                      ) : (
+                        <Button size="sm" onClick={() => { store.connectQuickBooks(); }}>Connect</Button>
+                      )}
+                    </div>
+                  </div>
+                  {store.quickBooksState.isConnected && (
+                    <>
+                      <div className="flex items-center justify-between"><h3 className="font-semibold">Sync Status</h3><Button variant="outline" size="sm" onClick={() => { store.syncQuickBooks(); }}><RefreshCw className="h-4 w-4 mr-1" />Sync Now</Button></div>
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Last Sync</p><p className="text-lg font-medium">{format(new Date(store.quickBooksState.lastSyncTime), 'MMM d, h:mm a')}</p></CardContent></Card>
+                        <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Total Synced</p><p className="text-lg font-medium">{store.quickBooksState.recordsSynced.toLocaleString()} records</p></CardContent></Card>
+                        <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Direction</p><p className="text-lg font-medium">{store.quickBooksState.syncDirection === 'two-way' ? 'Two-way Sync' : 'Nexus → QB'}</p></CardContent></Card>
+                      </div>
+                      <div><h3 className="font-semibold mb-3">Recent Sync Log</h3>
+                        <div className="space-y-2">
+                          {store.quickBooksState.syncLogs.slice(0, 4).map((log, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-2 border rounded text-sm">
+                              <div className="flex items-center gap-2">
+                                <Badge variant={log.status === 'success' ? 'default' : log.status === 'warning' ? 'secondary' : 'destructive'}>{log.status}</Badge>
+                                <span>{log.message}</span>
+                              </div>
+                              <span className="text-muted-foreground">{log.records} records</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Reports Tab */}
+            <TabsContent value="reports"><ReportsTab onRunReport={store.runReport} /></TabsContent>
+          </Tabs>
+        </div>
+
+        {/* Recent Activity Sidebar */}
+        <div>
+          <Card>
+            <CardHeader><CardTitle className="text-sm">Recent Activity</CardTitle></CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[400px]">
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="auto-sync">Automatic Sync</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Sync data automatically every hour
-                      </p>
+                  {store.recentActivity.map((act) => (
+                    <div key={act.id} className="flex gap-2 text-sm border-b pb-2">
+                      <div className="flex-1"><p>{act.message}</p><p className="text-xs text-muted-foreground">{act.user} • {act.timestamp}</p></div>
                     </div>
-                    <Button variant="outline" size="sm">Enabled</Button>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="sync-invoices">Sync Invoices</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Automatically create invoices in QuickBooks
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm">Enabled</Button>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="sync-payments">Sync Payments</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Record payments in QuickBooks automatically
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm">Enabled</Button>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="sync-expenses">Sync Expenses</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Track property expenses in QuickBooks
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm">Enabled</Button>
-                  </div>
+                  ))}
                 </div>
-              </div>
-
-              {/* Account Mapping */}
-              <div className="space-y-4">
-                <h3 className="font-semibold">Account Mapping</h3>
-                <p className="text-sm text-muted-foreground">
-                  Map Nexus accounts to QuickBooks accounts
-                </p>
-                <Button variant="outline" className="w-full gap-2">
-                  <Settings className="h-4 w-4" />
-                  Configure Account Mapping
-                </Button>
-              </div>
+              </ScrollArea>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+          <Card className="mt-4">
+            <CardHeader><CardTitle className="text-sm">Current Role</CardTitle></CardHeader>
+            <CardContent><Badge variant="default">{store.userRole}</Badge><p className="text-xs text-muted-foreground mt-2">Full access to all accounting features</p></CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Modals & Panels */}
+      <LedgerDrilldownPanel open={ledgerPanelOpen} onClose={() => setLedgerPanelOpen(false)} account={selectedAccount} transactions={store.transactions} onPostJournalEntry={store.postJournalEntry} accounts={store.accounts} />
+      <AccountModal open={accountModalOpen} onClose={() => setAccountModalOpen(false)} account={editingAccount} accounts={store.accounts} onSave={store.addAccount} onUpdate={store.updateAccount} />
+      <ApplyPaymentModal open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)} invoice={selectedInvoice} onApply={store.applyPayment} />
+      <PayBillModal open={payBillModalOpen} onClose={() => setPayBillModalOpen(false)} bill={selectedBill} onPay={store.payBill} />
+      <ReleaseDepositModal open={depositModalOpen} onClose={() => setDepositModalOpen(false)} deposit={selectedDeposit} onRelease={store.releaseDeposit} />
+      <OwnerStatementModal open={statementModalOpen} onClose={() => setStatementModalOpen(false)} statement={selectedStatement} onGenerate={store.generateStatement} onSend={store.sendStatement} />
+      <RecordPaymentModal open={recordPaymentOpen} onClose={() => setRecordPaymentOpen(false)} onRecord={store.recordManualPayment} />
+      <AuditLogModal open={auditLogOpen} onClose={() => setAuditLogOpen(false)} auditLogs={store.auditLogs} />
+      <KPIDrilldownPanel open={kpiDrilldownOpen} onClose={() => setKpiDrilldownOpen(false)} type={kpiDrilldownType} invoices={store.invoices} bills={store.bills} payments={store.payments} agingFilter={arAgingFilter} />
     </div>
   );
 };
