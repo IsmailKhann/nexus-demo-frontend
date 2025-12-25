@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -19,14 +18,33 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import {
   Search, Building2, MapPin, Users, DollarSign, Eye, Edit, BarChart3,
-  ChevronLeft, ChevronRight, Home, Plus, X
+  ChevronLeft, ChevronRight, Home, Plus, UserPlus, Wrench, FileText,
+  Calendar, Mail, Phone, AlertCircle, CheckCircle, Clock, Building
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import {
+  mockUnits, mockPropertyNotes, mockMaintenanceRequests, mockPropertyFinancials,
+  getUnitsForProperty, getNotesForProperty, getMaintenanceForProperty,
+  getFinancialsForProperty, getOwnerForProperty, getUnitStatusColor, getUnitTypeLabel,
+  Unit, PropertyNote
+} from '@/data/unitsData';
+import AddTenantModal from '@/components/properties/AddTenantModal';
+import UnitDetailPanel from '@/components/properties/UnitDetailPanel';
 
-// =============== PROPERTY DATA (extended) ===============
+// =============== PROPERTY DATA (extended with ownership) ===============
 export const initialProperties = [
   {
     id: "PROP_001",
@@ -44,7 +62,8 @@ export const initialProperties = [
     vacant_count: 6,
     avg_rent: 3200,
     timezone: "PST",
-    created_at: "2024-01-01"
+    created_at: "2024-01-01",
+    owner_id: "OWNER_001"
   },
   {
     id: "PROP_002",
@@ -61,7 +80,8 @@ export const initialProperties = [
     vacant_count: 10,
     avg_rent: 2100,
     timezone: "PST",
-    created_at: "2024-01-15"
+    created_at: "2024-01-15",
+    owner_id: "OWNER_002"
   },
   {
     id: "PROP_003",
@@ -78,7 +98,8 @@ export const initialProperties = [
     vacant_count: 4,
     avg_rent: 1500,
     timezone: "PST",
-    created_at: "2024-02-01"
+    created_at: "2024-02-01",
+    owner_id: "OWNER_003"
   },
   {
     id: "PROP_005",
@@ -96,7 +117,8 @@ export const initialProperties = [
     vacant_count: 2,
     avg_rent: 12000,
     timezone: "EST",
-    created_at: "2024-03-01"
+    created_at: "2024-03-01",
+    owner_id: "OWNER_004"
   }
 ];
 
@@ -114,6 +136,7 @@ export interface Property {
   avg_rent: number;
   timezone: string;
   created_at: string;
+  owner_id?: string;
 }
 
 const Properties = () => {
@@ -125,6 +148,14 @@ const Properties = () => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState<Partial<Property>>({});
+  const [units, setUnits] = useState<Unit[]>(mockUnits);
+  const [notes, setNotes] = useState<PropertyNote[]>(mockPropertyNotes);
+  const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
+  const [isUnitDetailOpen, setIsUnitDetailOpen] = useState(false);
+  const [isAddTenantOpen, setIsAddTenantOpen] = useState(false);
+  const [tenantUnit, setTenantUnit] = useState<Unit | null>(null);
+  const [newNote, setNewNote] = useState('');
+  const [unitStatusFilter, setUnitStatusFilter] = useState<string>('all');
   const { toast } = useToast();
 
   // Get unique cities
@@ -153,11 +184,45 @@ const Properties = () => {
     avgRent: Math.round(properties.reduce((acc, p) => acc + p.avg_rent, 0) / properties.length)
   }), [properties]);
 
+  // Get units for selected property
+  const propertyUnits = useMemo(() => {
+    if (!selectedProperty) return [];
+    const propUnits = units.filter(u => u.property_id === selectedProperty.id);
+    if (unitStatusFilter === 'all') return propUnits;
+    return propUnits.filter(u => u.status === unitStatusFilter);
+  }, [selectedProperty, units, unitStatusFilter]);
+
+  // Get notes for selected property
+  const propertyNotes = useMemo(() => {
+    if (!selectedProperty) return [];
+    return notes.filter(n => n.property_id === selectedProperty.id)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [selectedProperty, notes]);
+
+  // Get maintenance for selected property
+  const propertyMaintenance = useMemo(() => {
+    if (!selectedProperty) return [];
+    return getMaintenanceForProperty(selectedProperty.id);
+  }, [selectedProperty]);
+
+  // Get financials for selected property
+  const propertyFinancials = useMemo(() => {
+    if (!selectedProperty) return null;
+    return getFinancialsForProperty(selectedProperty.id);
+  }, [selectedProperty]);
+
+  // Get owner for selected property
+  const propertyOwner = useMemo(() => {
+    if (!selectedProperty) return null;
+    return getOwnerForProperty(selectedProperty.id);
+  }, [selectedProperty]);
+
   const openPropertyDetail = (property: Property) => {
     setSelectedProperty(property);
     setEditData(property);
     setIsDetailOpen(true);
     setEditMode(false);
+    setUnitStatusFilter('all');
   };
 
   const handleSaveEdit = () => {
@@ -168,6 +233,31 @@ const Properties = () => {
     setSelectedProperty({ ...selectedProperty, ...editData } as Property);
     setEditMode(false);
     toast({ title: 'Property updated', description: 'Changes saved (in-memory)' });
+  };
+
+  const handleAddTenant = (unitId: string, tenant: Unit['current_tenant']) => {
+    setUnits(prev => prev.map(u => 
+      u.id === unitId ? { ...u, current_tenant: tenant, status: 'occupied' as const, available_date: null } : u
+    ));
+  };
+
+  const handleAddNote = () => {
+    if (!selectedProperty || !newNote.trim()) return;
+    const note: PropertyNote = {
+      id: `NOTE_${Date.now()}`,
+      property_id: selectedProperty.id,
+      note: newNote.trim(),
+      created_by: 'Current User',
+      created_at: new Date().toISOString()
+    };
+    setNotes(prev => [...prev, note]);
+    setNewNote('');
+    toast({ title: 'Note added', description: 'Property note saved' });
+  };
+
+  const openAddTenant = (unit: Unit) => {
+    setTenantUnit(unit);
+    setIsAddTenantOpen(true);
   };
 
   // Image carousel state
@@ -185,6 +275,15 @@ const Properties = () => {
     setCurrentImageIndex(prev => 
       prev > 0 ? prev - 1 : selectedProperty.images.length - 1
     );
+  };
+
+  const getMaintenanceStatusIcon = (status: string) => {
+    switch (status) {
+      case 'open': return <AlertCircle className="h-4 w-4 text-amber-400" />;
+      case 'in_progress': return <Clock className="h-4 w-4 text-blue-400" />;
+      case 'completed': return <CheckCircle className="h-4 w-4 text-emerald-400" />;
+      default: return <CheckCircle className="h-4 w-4 text-muted-foreground" />;
+    }
   };
 
   return (
@@ -298,6 +397,11 @@ const Properties = () => {
                   {property.vacant_count} vacant
                 </Badge>
               </div>
+              <div className="absolute top-3 left-3">
+                <Badge variant="secondary" className="bg-background/80 text-foreground text-xs">
+                  {property.id}
+                </Badge>
+              </div>
             </div>
             <CardContent className="p-4">
               <h3 className="font-semibold text-lg text-foreground">{property.name}</h3>
@@ -334,7 +438,7 @@ const Properties = () => {
       {/* Property Detail Sheet */}
       <Sheet open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <SheetContent 
-          className="w-full sm:max-w-xl bg-card border-border overflow-y-auto"
+          className="w-full sm:max-w-2xl bg-card border-border overflow-y-auto"
           onEscapeKeyDown={() => setIsDetailOpen(false)}
         >
           {selectedProperty && (
@@ -343,6 +447,9 @@ const Properties = () => {
               <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-sidebar to-primary opacity-90" />
               
               <SheetHeader className="relative z-10 pt-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="bg-white/20 text-white">{selectedProperty.id}</Badge>
+                </div>
                 <SheetTitle className="text-white text-xl">{selectedProperty.name}</SheetTitle>
                 <SheetDescription className="text-white/80">
                   {selectedProperty.city}, {selectedProperty.state}
@@ -355,10 +462,6 @@ const Properties = () => {
                   >
                     <Edit className="h-3 w-3 mr-1" />
                     {editMode ? 'Cancel' : 'Edit'}
-                  </Button>
-                  <Button size="sm" variant="secondary">
-                    <Eye className="h-3 w-3 mr-1" />
-                    View Units
                   </Button>
                 </div>
               </SheetHeader>
@@ -402,13 +505,15 @@ const Properties = () => {
                 </div>
 
                 <Tabs defaultValue="overview" className="w-full">
-                  <TabsList className="grid w-full grid-cols-4 bg-muted">
-                    <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Overview</TabsTrigger>
-                    <TabsTrigger value="units" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Units</TabsTrigger>
-                    <TabsTrigger value="financials" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Financials</TabsTrigger>
-                    <TabsTrigger value="settings" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Settings</TabsTrigger>
+                  <TabsList className="grid w-full grid-cols-5 bg-muted">
+                    <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs">Overview</TabsTrigger>
+                    <TabsTrigger value="units" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs">Units</TabsTrigger>
+                    <TabsTrigger value="financials" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs">Financials</TabsTrigger>
+                    <TabsTrigger value="maintenance" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs">Maintenance</TabsTrigger>
+                    <TabsTrigger value="notes" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs">Notes</TabsTrigger>
                   </TabsList>
 
+                  {/* Overview Tab */}
                   <TabsContent value="overview" className="space-y-4 mt-4">
                     {/* Key Stats */}
                     <div className="grid grid-cols-2 gap-4">
@@ -496,6 +601,53 @@ const Properties = () => {
                       )}
                     </div>
 
+                    {/* Ownership Entity */}
+                    {propertyOwner && (
+                      <div>
+                        <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
+                          <Building className="h-4 w-4 text-primary" />
+                          Ownership Entity
+                        </h4>
+                        <Card className="bg-muted border-border">
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <p className="font-semibold text-foreground">{propertyOwner.name}</p>
+                                <Badge variant="secondary" className="mt-1">{propertyOwner.type}</Badge>
+                              </div>
+                            </div>
+                            <Separator className="my-3 bg-border" />
+                            <div className="space-y-2 text-sm">
+                              <div className="flex items-center gap-2">
+                                <Users className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-muted-foreground">{propertyOwner.contact_name}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Mail className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-muted-foreground">{propertyOwner.contact_email}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Phone className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-muted-foreground">{propertyOwner.contact_phone}</span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    )}
+
+                    {/* Property ID & Created */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-medium text-foreground mb-2">Property ID</h4>
+                        <p className="text-sm text-muted-foreground font-mono">{selectedProperty.id}</p>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-foreground mb-2">Created</h4>
+                        <p className="text-sm text-muted-foreground">{selectedProperty.created_at}</p>
+                      </div>
+                    </div>
+
                     {editMode && (
                       <Button onClick={handleSaveEdit} className="w-full bg-primary hover:bg-primary-hover text-primary-foreground">
                         Save Changes
@@ -503,76 +655,314 @@ const Properties = () => {
                     )}
                   </TabsContent>
 
+                  {/* Units Tab */}
                   <TabsContent value="units" className="mt-4">
                     <div className="space-y-4">
-                      <p className="text-sm text-muted-foreground">
-                        Showing {selectedProperty.units_count} units for this property.
-                      </p>
-                      <div className="grid gap-2">
-                        {Array.from({ length: Math.min(5, selectedProperty.units_count) }).map((_, idx) => (
-                          <Card key={idx} className="bg-muted border-border">
-                            <CardContent className="p-3 flex items-center justify-between">
-                              <div>
-                                <p className="font-medium text-foreground">Unit {101 + idx}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {idx < selectedProperty.vacant_count ? 'Vacant' : 'Occupied'}
+                      {/* Unit Filters */}
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground">
+                          Showing {propertyUnits.length} units
+                        </p>
+                        <Select value={unitStatusFilter} onValueChange={setUnitStatusFilter}>
+                          <SelectTrigger className="w-[140px] h-8 bg-muted border-border">
+                            <SelectValue placeholder="Status" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover border-border">
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="occupied">Occupied</SelectItem>
+                            <SelectItem value="vacant">Vacant</SelectItem>
+                            <SelectItem value="notice">Notice</SelectItem>
+                            <SelectItem value="maintenance">Maintenance</SelectItem>
+                            <SelectItem value="reserved">Reserved</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Units Table */}
+                      <div className="border border-border rounded-lg overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-muted/50 hover:bg-muted/50">
+                              <TableHead className="text-xs">Unit #</TableHead>
+                              <TableHead className="text-xs">Type</TableHead>
+                              <TableHead className="text-xs">Status</TableHead>
+                              <TableHead className="text-xs">Bed/Bath</TableHead>
+                              <TableHead className="text-xs">Size</TableHead>
+                              <TableHead className="text-xs">Market Rent</TableHead>
+                              <TableHead className="text-xs">Deposit</TableHead>
+                              <TableHead className="text-xs">Tenant</TableHead>
+                              <TableHead className="text-xs">Available</TableHead>
+                              <TableHead className="text-xs">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {propertyUnits.map((unit) => (
+                              <TableRow 
+                                key={unit.id} 
+                                className="cursor-pointer hover:bg-muted/50"
+                                onClick={() => { setSelectedUnit(unit); setIsUnitDetailOpen(true); }}
+                              >
+                                <TableCell className="font-medium text-foreground">{unit.unit_number}</TableCell>
+                                <TableCell className="text-xs text-muted-foreground">{getUnitTypeLabel(unit.unit_type)}</TableCell>
+                                <TableCell>
+                                  <Badge className={`${getUnitStatusColor(unit.status)} capitalize text-xs`}>
+                                    {unit.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-xs text-muted-foreground">
+                                  {unit.bedrooms === 0 ? 'Studio' : unit.bedrooms} / {unit.bathrooms}
+                                </TableCell>
+                                <TableCell className="text-xs text-muted-foreground">{unit.size_sqft.toLocaleString()} sf</TableCell>
+                                <TableCell className="font-medium text-foreground">${unit.market_rent.toLocaleString()}</TableCell>
+                                <TableCell className="text-xs text-muted-foreground">${unit.deposit.toLocaleString()}</TableCell>
+                                <TableCell className="text-xs">
+                                  {unit.current_tenant ? (
+                                    <span className="text-foreground">{unit.current_tenant.name}</span>
+                                  ) : (
+                                    <span className="text-muted-foreground">—</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-xs text-muted-foreground">
+                                  {unit.available_date ? format(new Date(unit.available_date), 'MMM d, yyyy') : '—'}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex gap-1">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-7 w-7 p-0"
+                                      onClick={(e) => { e.stopPropagation(); setSelectedUnit(unit); setIsUnitDetailOpen(true); }}
+                                    >
+                                      <Eye className="h-3 w-3" />
+                                    </Button>
+                                    {!unit.current_tenant && (
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-7 w-7 p-0 text-primary"
+                                        onClick={(e) => { e.stopPropagation(); openAddTenant(unit); }}
+                                      >
+                                        <UserPlus className="h-3 w-3" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+
+                      {propertyUnits.length === 0 && (
+                        <div className="text-center py-8">
+                          <Home className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                          <p className="text-muted-foreground">No units found</p>
+                          <Button variant="outline" size="sm" className="mt-3 border-border">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Unit
+                          </Button>
+                        </div>
+                      )}
+
+                      <Button variant="outline" className="w-full border-border">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add New Unit
+                      </Button>
+                    </div>
+                  </TabsContent>
+
+                  {/* Financials Tab */}
+                  <TabsContent value="financials" className="mt-4">
+                    <div className="space-y-4">
+                      {propertyFinancials ? (
+                        <>
+                          <div className="grid grid-cols-2 gap-4">
+                            <Card className="bg-muted border-border">
+                              <CardContent className="p-4">
+                                <p className="text-xs text-muted-foreground">Accounts Receivable</p>
+                                <p className="text-2xl font-bold text-foreground">
+                                  ${propertyFinancials.accounts_receivable.toLocaleString()}
                                 </p>
+                              </CardContent>
+                            </Card>
+                            <Card className="bg-muted border-border">
+                              <CardContent className="p-4">
+                                <p className="text-xs text-muted-foreground">Deposits Held</p>
+                                <p className="text-2xl font-bold text-foreground">
+                                  ${propertyFinancials.deposits_held.toLocaleString()}
+                                </p>
+                              </CardContent>
+                            </Card>
+                            <Card className="bg-muted border-border">
+                              <CardContent className="p-4">
+                                <p className="text-xs text-muted-foreground">Outstanding Dues</p>
+                                <p className="text-2xl font-bold text-amber-400">
+                                  ${propertyFinancials.outstanding_dues.toLocaleString()}
+                                </p>
+                              </CardContent>
+                            </Card>
+                            <Card className="bg-muted border-border">
+                              <CardContent className="p-4">
+                                <p className="text-xs text-muted-foreground">Monthly Rent Summary</p>
+                                <p className="text-xl font-bold text-foreground">
+                                  ${propertyFinancials.monthly_rent_collected.toLocaleString()}
+                                  <span className="text-sm text-muted-foreground font-normal"> / ${propertyFinancials.monthly_rent_expected.toLocaleString()}</span>
+                                </p>
+                              </CardContent>
+                            </Card>
+                          </div>
+                          <Card className="bg-muted border-border">
+                            <CardContent className="p-4">
+                              <p className="text-xs text-muted-foreground mb-2">Collection Rate</p>
+                              <div className="flex items-center gap-4">
+                                <div className="flex-1 bg-background rounded-full h-3 overflow-hidden">
+                                  <div 
+                                    className="bg-primary h-full rounded-full transition-all"
+                                    style={{ width: `${(propertyFinancials.monthly_rent_collected / propertyFinancials.monthly_rent_expected) * 100}%` }}
+                                  />
+                                </div>
+                                <span className="font-bold text-foreground">
+                                  {Math.round((propertyFinancials.monthly_rent_collected / propertyFinancials.monthly_rent_expected) * 100)}%
+                                </span>
                               </div>
-                              <Badge className={idx < selectedProperty.vacant_count ? 'bg-status-leased' : 'bg-muted'}>
-                                ${Math.round(selectedProperty.avg_rent * (0.9 + Math.random() * 0.2)).toLocaleString()}
-                              </Badge>
+                            </CardContent>
+                          </Card>
+                          <Card className="bg-muted border-border">
+                            <CardContent className="p-4">
+                              <p className="text-xs text-muted-foreground">Occupancy Rate</p>
+                              <p className="text-2xl font-bold text-foreground">
+                                {Math.round(((selectedProperty.units_count - selectedProperty.vacant_count) / selectedProperty.units_count) * 100)}%
+                              </p>
+                            </CardContent>
+                          </Card>
+                        </>
+                      ) : (
+                        <div className="text-center py-8">
+                          <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                          <p className="text-muted-foreground">No financial data available</p>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+
+                  {/* Maintenance Tab */}
+                  <TabsContent value="maintenance" className="mt-4">
+                    <div className="space-y-4">
+                      {/* Maintenance Summary */}
+                      <div className="grid grid-cols-3 gap-4">
+                        <Card className="bg-muted border-border">
+                          <CardContent className="p-4 text-center">
+                            <p className="text-2xl font-bold text-foreground">
+                              {propertyMaintenance.length}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Total Requests</p>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-muted border-border">
+                          <CardContent className="p-4 text-center">
+                            <p className="text-2xl font-bold text-amber-400">
+                              {propertyMaintenance.filter(m => m.status === 'open').length}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Open</p>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-muted border-border">
+                          <CardContent className="p-4 text-center">
+                            <p className="text-2xl font-bold text-emerald-400">
+                              {propertyMaintenance.filter(m => m.status === 'completed' || m.status === 'closed').length}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Completed</p>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      {/* Maintenance List */}
+                      <div className="space-y-2">
+                        {propertyMaintenance.map((request) => (
+                          <Card key={request.id} className="bg-muted border-border">
+                            <CardContent className="p-3 flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                {getMaintenanceStatusIcon(request.status)}
+                                <div>
+                                  <p className="font-medium text-foreground text-sm">{request.title}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {request.unit_id ? `Unit ${units.find(u => u.id === request.unit_id)?.unit_number || 'N/A'}` : 'Common Area'} • {format(new Date(request.created_at), 'MMM d, yyyy')}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className={`capitalize text-xs ${
+                                  request.priority === 'high' || request.priority === 'urgent' 
+                                    ? 'bg-red-500/20 text-red-400' 
+                                    : 'bg-muted'
+                                }`}>
+                                  {request.priority}
+                                </Badge>
+                                <Badge variant="secondary" className="capitalize text-xs">
+                                  {request.status.replace('_', ' ')}
+                                </Badge>
+                              </div>
                             </CardContent>
                           </Card>
                         ))}
                       </div>
-                      <Button variant="outline" className="w-full border-border">
-                        View All Units
-                      </Button>
+
+                      {propertyMaintenance.length === 0 && (
+                        <div className="text-center py-8">
+                          <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                          <p className="text-muted-foreground">No maintenance requests</p>
+                        </div>
+                      )}
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="financials" className="mt-4">
+                  {/* Notes Tab */}
+                  <TabsContent value="notes" className="mt-4">
                     <div className="space-y-4">
-                      <Card className="bg-muted border-border">
-                        <CardContent className="p-4">
-                          <p className="text-xs text-muted-foreground">Monthly Revenue</p>
-                          <p className="text-2xl font-bold text-foreground">
-                            ${((selectedProperty.units_count - selectedProperty.vacant_count) * selectedProperty.avg_rent).toLocaleString()}
-                          </p>
-                        </CardContent>
-                      </Card>
-                      <Card className="bg-muted border-border">
-                        <CardContent className="p-4">
-                          <p className="text-xs text-muted-foreground">Occupancy Rate</p>
-                          <p className="text-2xl font-bold text-foreground">
-                            {Math.round(((selectedProperty.units_count - selectedProperty.vacant_count) / selectedProperty.units_count) * 100)}%
-                          </p>
-                        </CardContent>
-                      </Card>
-                      <Card className="bg-muted border-border">
-                        <CardContent className="p-4">
-                          <p className="text-xs text-muted-foreground">Potential Revenue</p>
-                          <p className="text-2xl font-bold text-foreground">
-                            ${(selectedProperty.units_count * selectedProperty.avg_rent).toLocaleString()}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </TabsContent>
+                      {/* Add Note */}
+                      <div className="space-y-2">
+                        <Textarea 
+                          placeholder="Add a note..."
+                          value={newNote}
+                          onChange={(e) => setNewNote(e.target.value)}
+                          className="bg-muted border-border min-h-[80px]"
+                        />
+                        <Button 
+                          onClick={handleAddNote}
+                          disabled={!newNote.trim()}
+                          className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Note
+                        </Button>
+                      </div>
 
-                  <TabsContent value="settings" className="mt-4">
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="font-medium text-foreground mb-2">Property ID</h4>
-                        <p className="text-sm text-muted-foreground">{selectedProperty.id}</p>
+                      <Separator className="bg-border" />
+
+                      {/* Notes List */}
+                      <div className="space-y-3">
+                        {propertyNotes.map((note) => (
+                          <Card key={note.id} className="bg-muted border-border">
+                            <CardContent className="p-4">
+                              <p className="text-sm text-foreground">{note.note}</p>
+                              <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
+                                <Users className="h-3 w-3" />
+                                <span>{note.created_by}</span>
+                                <span>•</span>
+                                <Calendar className="h-3 w-3" />
+                                <span>{format(new Date(note.created_at), 'MMM d, yyyy h:mm a')}</span>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
                       </div>
-                      <div>
-                        <h4 className="font-medium text-foreground mb-2">Created</h4>
-                        <p className="text-sm text-muted-foreground">{selectedProperty.created_at}</p>
-                      </div>
-                      <Button variant="destructive" className="w-full">
-                        Delete Property
-                      </Button>
+
+                      {propertyNotes.length === 0 && (
+                        <div className="text-center py-8">
+                          <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                          <p className="text-muted-foreground">No notes yet</p>
+                        </div>
+                      )}
                     </div>
                   </TabsContent>
                 </Tabs>
@@ -581,6 +971,22 @@ const Properties = () => {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Unit Detail Panel */}
+      <UnitDetailPanel 
+        unit={selectedUnit}
+        isOpen={isUnitDetailOpen}
+        onClose={() => setIsUnitDetailOpen(false)}
+        onAddTenant={openAddTenant}
+      />
+
+      {/* Add Tenant Modal */}
+      <AddTenantModal 
+        isOpen={isAddTenantOpen}
+        onClose={() => setIsAddTenantOpen(false)}
+        unit={tenantUnit}
+        onSave={handleAddTenant}
+      />
     </div>
   );
 };
