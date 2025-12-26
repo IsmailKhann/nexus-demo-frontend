@@ -272,9 +272,23 @@ export const BillingDashboard = () => {
                         <p className="font-mono font-bold">${pmt.amount.toLocaleString()}</p>
                         {getPaymentStatusBadge(pmt.status)}
                       </div>
-                      <Button variant="ghost" size="sm">
-                        <Download className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => toast({ title: 'Receipt Downloaded', description: `Receipt for payment ${pmt.id}` })}>
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        {pmt.status === 'cleared' && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => toast({ 
+                              title: 'Dispute Submitted', 
+                              description: 'A support ticket has been created. Our team will contact you within 24 hours.' 
+                            })}
+                          >
+                            <AlertCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}

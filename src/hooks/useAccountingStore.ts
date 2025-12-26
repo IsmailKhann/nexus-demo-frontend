@@ -242,6 +242,47 @@ export function useAccountingStore() {
     addAuditLog('Manual Payment Recorded', 'Payment', newPayment.id, undefined, `$${payment.amount} - ${payment.payer_payee}`);
   }, [addActivity, addAuditLog]);
 
+  // Refund payment
+  const refundPayment = useCallback((paymentId: string) => {
+    const payment = payments.find(p => p.id === paymentId);
+    if (!payment || payment.status === 'Refunded') return;
+
+    setPayments(prev => prev.map(p => 
+      p.id === paymentId ? { ...p, status: 'Refunded' as const } : p
+    ));
+
+    // Create refund record
+    const refundRecord: Payment = {
+      id: `REF-${Date.now()}`,
+      date: new Date().toISOString().split('T')[0],
+      type: 'Refund' as const,
+      payer_payee: payment.payer_payee,
+      property: payment.property,
+      amount: -payment.amount,
+      method: payment.method,
+      status: 'Pending',
+      reference: paymentId,
+      linked_entries: [],
+    };
+    setPayments(prev => [refundRecord, ...prev]);
+
+    addActivity(`Refund processed for ${paymentId} - $${payment.amount.toLocaleString()}`, 'payment');
+    addAuditLog('Payment Refunded', 'Payment', paymentId, payment.status, 'Refunded');
+  }, [payments, addActivity, addAuditLog]);
+
+  // Void payment
+  const voidPayment = useCallback((paymentId: string) => {
+    const payment = payments.find(p => p.id === paymentId);
+    if (!payment || payment.status === 'Voided') return;
+
+    setPayments(prev => prev.map(p => 
+      p.id === paymentId ? { ...p, status: 'Voided' as const } : p
+    ));
+
+    addActivity(`Payment ${paymentId} voided`, 'payment');
+    addAuditLog('Payment Voided', 'Payment', paymentId, payment.status, 'Voided');
+  }, [payments, addActivity, addAuditLog]);
+
   // Post journal entry
   const postJournalEntry = useCallback((entries: { accountId: string; debit: number; credit: number; description: string }[], property: string) => {
     const ref = `JE-${Date.now()}`;
@@ -327,6 +368,8 @@ export function useAccountingStore() {
     
     // Payment operations
     recordManualPayment,
+    refundPayment,
+    voidPayment,
     
     // Transaction operations
     postJournalEntry,
