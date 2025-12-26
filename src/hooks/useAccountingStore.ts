@@ -242,11 +242,25 @@ export function useAccountingStore() {
     addAuditLog('Manual Payment Recorded', 'Payment', newPayment.id, undefined, `$${payment.amount} - ${payment.payer_payee}`);
   }, [addActivity, addAuditLog]);
 
-  // Refund payment
-  const refundPayment = useCallback((paymentId: string) => {
+  // Refund payment - enhanced with partial refund support
+  const refundPayment = useCallback(async (
+    paymentId: string, 
+    refundAmount?: number, 
+    reason?: string, 
+    notes?: string
+  ): Promise<{ success: boolean; message: string }> => {
     const payment = payments.find(p => p.id === paymentId);
-    if (!payment || payment.status === 'Refunded') return;
+    if (!payment) return { success: false, message: 'Payment not found' };
+    if (payment.status === 'Refunded') return { success: false, message: 'Payment already refunded' };
+    if (payment.status !== 'Cleared') return { success: false, message: 'Only cleared payments can be refunded' };
 
+    // Simulate processing delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    const effectiveRefundAmount = refundAmount || payment.amount;
+    const isPartialRefund = effectiveRefundAmount < payment.amount;
+
+    // Update original payment status
     setPayments(prev => prev.map(p => 
       p.id === paymentId ? { ...p, status: 'Refunded' as const } : p
     ));
@@ -256,9 +270,9 @@ export function useAccountingStore() {
       id: `REF-${Date.now()}`,
       date: new Date().toISOString().split('T')[0],
       type: 'Refund' as const,
-      payer_payee: payment.payer_payee,
+      payer_payee: `${payment.payer_payee} (Refund)`,
       property: payment.property,
-      amount: -payment.amount,
+      amount: -effectiveRefundAmount,
       method: payment.method,
       status: 'Pending',
       reference: paymentId,
@@ -266,8 +280,23 @@ export function useAccountingStore() {
     };
     setPayments(prev => [refundRecord, ...prev]);
 
-    addActivity(`Refund processed for ${paymentId} - $${payment.amount.toLocaleString()}`, 'payment');
-    addAuditLog('Payment Refunded', 'Payment', paymentId, payment.status, 'Refunded');
+    // Add activity
+    const refundTypeLabel = isPartialRefund ? 'Partial refund' : 'Full refund';
+    addActivity(`${refundTypeLabel} $${effectiveRefundAmount.toLocaleString()} processed for ${paymentId}${reason ? ` - ${reason}` : ''}`, 'payment');
+    
+    // Add audit log with detailed info
+    addAuditLog(
+      isPartialRefund ? 'Partial Refund Issued' : 'Full Refund Issued', 
+      'Payment', 
+      paymentId, 
+      `${payment.status} - $${payment.amount.toLocaleString()}`, 
+      `Refunded - $${effectiveRefundAmount.toLocaleString()}${reason ? ` (${reason})` : ''}${notes ? ` - Notes: ${notes}` : ''}`
+    );
+
+    return { 
+      success: true, 
+      message: `${refundTypeLabel} of $${effectiveRefundAmount.toLocaleString()} has been processed` 
+    };
   }, [payments, addActivity, addAuditLog]);
 
   // Void payment

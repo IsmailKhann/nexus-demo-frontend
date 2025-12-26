@@ -8,10 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
-  DollarSign, FileText, TrendingUp, Clock, CheckCircle, AlertCircle, Download, Upload, Settings, Search, Filter, RefreshCw, CreditCard, Building2, ArrowUpRight, ArrowDownRight, Plus, Eye, Edit, Send, Shield, Wallet, Users, FileSpreadsheet, AlertTriangle, ChevronRight
+  DollarSign, FileText, TrendingUp, Clock, CheckCircle, AlertCircle, Download, Upload, Settings, Search, Filter, RefreshCw, CreditCard, Building2, ArrowUpRight, ArrowDownRight, Plus, Eye, Edit, Send, Shield, Wallet, Users, FileSpreadsheet, AlertTriangle, ChevronRight, Undo2
 } from 'lucide-react';
 import { useAccountingStore } from '@/hooks/useAccountingStore';
-import { calculateARAgingSummary } from '@/data/accountingData';
+import { calculateARAgingSummary, Payment } from '@/data/accountingData';
 import { LedgerDrilldownPanel } from '@/components/accounting/LedgerDrilldownPanel';
 import { AccountModal } from '@/components/accounting/AccountModal';
 import { ApplyPaymentModal } from '@/components/accounting/ApplyPaymentModal';
@@ -23,6 +23,8 @@ import { AuditLogModal } from '@/components/accounting/AuditLogModal';
 import { ReportsTab } from '@/components/accounting/ReportsTab';
 import { KPIDrilldownPanel } from '@/components/accounting/KPIDrilldownPanel';
 import { RecurringPaymentsTab } from '@/components/accounting/RecurringPaymentsTab';
+import { RefundModal } from '@/components/accounting/RefundModal';
+import { PaymentDetailPanel } from '@/components/accounting/PaymentDetailPanel';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -50,6 +52,12 @@ const Accounting = () => {
   const [kpiDrilldownOpen, setKpiDrilldownOpen] = useState(false);
   const [kpiDrilldownType, setKpiDrilldownType] = useState<'revenue' | 'ar' | 'expenses' | 'netIncome' | 'trust' | null>(null);
   const [arAgingFilter, setArAgingFilter] = useState<string>('');
+  
+  // Refund states
+  const [refundModalOpen, setRefundModalOpen] = useState(false);
+  const [paymentDetailOpen, setPaymentDetailOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [isRefundProcessing, setIsRefundProcessing] = useState(false);
 
   const arAging = calculateARAgingSummary(store.invoices);
   
@@ -60,7 +68,7 @@ const Accounting = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline", icon: any }> = {
+    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline", icon: any, className?: string }> = {
       active: { variant: 'default', icon: CheckCircle },
       Open: { variant: 'secondary', icon: Clock },
       Overdue: { variant: 'destructive', icon: AlertCircle },
@@ -74,10 +82,42 @@ const Accounting = () => {
       Draft: { variant: 'outline', icon: FileText },
       Generated: { variant: 'secondary', icon: FileText },
       Sent: { variant: 'default', icon: Send },
+      Refunded: { variant: 'outline', icon: Undo2, className: 'bg-amber-500/10 text-amber-600 border-amber-500/30' },
+      Voided: { variant: 'outline', icon: AlertTriangle, className: 'bg-gray-500/10 text-gray-600 border-gray-500/30' },
     };
     const config = variants[status] || { variant: 'outline' as const, icon: Clock };
     const Icon = config.icon;
-    return <Badge variant={config.variant} className="gap-1"><Icon className="h-3 w-3" />{status}</Badge>;
+    return <Badge variant={config.variant} className={`gap-1 ${config.className || ''}`}><Icon className="h-3 w-3" />{status}</Badge>;
+  };
+
+  // Refund handlers
+  const handleOpenPaymentDetail = (payment: Payment) => {
+    setSelectedPayment(payment);
+    setPaymentDetailOpen(true);
+  };
+
+  const handleOpenRefundModal = (payment: Payment) => {
+    setSelectedPayment(payment);
+    setPaymentDetailOpen(false);
+    setRefundModalOpen(true);
+  };
+
+  const handleRefund = async (paymentId: string, amount: number, reason: string, notes: string) => {
+    setIsRefundProcessing(true);
+    const result = await store.refundPayment(paymentId, amount, reason, notes);
+    setIsRefundProcessing(false);
+    if (result.success) {
+      toast({ title: 'Refund Processed', description: result.message });
+    } else {
+      toast({ title: 'Refund Failed', description: result.message, variant: 'destructive' });
+    }
+    return result;
+  };
+
+  const handleVoidPayment = (paymentId: string) => {
+    store.voidPayment(paymentId);
+    setPaymentDetailOpen(false);
+    toast({ title: 'Payment Voided', description: `Payment ${paymentId} has been voided` });
   };
 
   const filteredAccounts = store.accounts.filter(a => {
@@ -287,31 +327,51 @@ const Accounting = () => {
             {/* Payments Tab */}
             <TabsContent value="payments">
               <Card>
-                <CardHeader><div className="flex items-center justify-between"><div><CardTitle>Payment History</CardTitle><CardDescription>All payment transactions</CardDescription></div><Button onClick={() => setRecordPaymentOpen(true)}><CreditCard className="h-4 w-4 mr-1" />Record Payment</Button></div></CardHeader>
+                <CardHeader><div className="flex items-center justify-between"><div><CardTitle>Payment History</CardTitle><CardDescription>All payment transactions - Click any row to view details and issue refunds</CardDescription></div><Button onClick={() => setRecordPaymentOpen(true)}><CreditCard className="h-4 w-4 mr-1" />Record Payment</Button></div></CardHeader>
                 <CardContent>
                   <div className="border rounded-lg">
                     <Table>
                       <TableHeader><TableRow><TableHead>Payment #</TableHead><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Payer/Payee</TableHead><TableHead>Property</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Method</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                       <TableBody>
                         {store.payments.map((pmt) => (
-                          <TableRow key={pmt.id}>
+                          <TableRow 
+                            key={pmt.id} 
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleOpenPaymentDetail(pmt)}
+                          >
                             <TableCell className="font-mono">{pmt.id}</TableCell>
                             <TableCell>{pmt.date}</TableCell>
                             <TableCell><Badge variant="outline">{pmt.type}</Badge></TableCell>
                             <TableCell>{pmt.payer_payee}</TableCell>
                             <TableCell className="text-muted-foreground">{pmt.property}</TableCell>
-                            <TableCell className={`text-right font-mono ${pmt.amount < 0 ? 'text-red-500' : ''}`}>${Math.abs(pmt.amount).toLocaleString()}</TableCell>
+                            <TableCell className={`text-right font-mono ${pmt.amount < 0 ? 'text-amber-600' : ''}`}>
+                              {pmt.amount < 0 ? '-' : ''}${Math.abs(pmt.amount).toLocaleString()}
+                            </TableCell>
                             <TableCell><Badge variant="secondary">{pmt.method}</Badge></TableCell>
                             <TableCell>{getStatusBadge(pmt.status)}</TableCell>
                             <TableCell className="text-right">
-                              <Button variant="ghost" size="sm" onClick={() => toast({ title: 'Receipt', description: `Receipt for ${pmt.id} downloaded` })}><Eye className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleOpenPaymentDetail(pmt); }}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
                               {pmt.status === 'Cleared' && pmt.type !== 'Refund' && (
-                                <Button variant="ghost" size="sm" onClick={() => { store.refundPayment(pmt.id); toast({ title: 'Refund Initiated', description: `Refund for ${pmt.id} is processing` }); }}>
-                                  <ArrowDownRight className="h-4 w-4" />
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="text-amber-600 hover:text-amber-700"
+                                  onClick={(e) => { e.stopPropagation(); handleOpenRefundModal(pmt); }}
+                                  title="Issue Refund"
+                                >
+                                  <Undo2 className="h-4 w-4" />
                                 </Button>
                               )}
                               {(pmt.status === 'Pending' || pmt.status === 'Cleared') && pmt.type !== 'Refund' && (
-                                <Button variant="ghost" size="sm" onClick={() => { store.voidPayment(pmt.id); toast({ title: 'Payment Voided', description: `${pmt.id} has been voided` }); }}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={(e) => { e.stopPropagation(); handleVoidPayment(pmt.id); }}
+                                  title="Void Payment"
+                                >
                                   <AlertTriangle className="h-4 w-4" />
                                 </Button>
                               )}
@@ -472,6 +532,23 @@ const Accounting = () => {
       <RecordPaymentModal open={recordPaymentOpen} onClose={() => setRecordPaymentOpen(false)} onRecord={store.recordManualPayment} />
       <AuditLogModal open={auditLogOpen} onClose={() => setAuditLogOpen(false)} auditLogs={store.auditLogs} />
       <KPIDrilldownPanel open={kpiDrilldownOpen} onClose={() => setKpiDrilldownOpen(false)} type={kpiDrilldownType} invoices={store.invoices} bills={store.bills} payments={store.payments} agingFilter={arAgingFilter} />
+      
+      {/* Refund Components */}
+      <RefundModal 
+        open={refundModalOpen} 
+        onClose={() => setRefundModalOpen(false)} 
+        payment={selectedPayment} 
+        onRefund={handleRefund} 
+        isProcessing={isRefundProcessing} 
+      />
+      <PaymentDetailPanel 
+        open={paymentDetailOpen} 
+        onClose={() => setPaymentDetailOpen(false)} 
+        payment={selectedPayment} 
+        onRefund={() => { setPaymentDetailOpen(false); setRefundModalOpen(true); }}
+        onVoid={() => selectedPayment && handleVoidPayment(selectedPayment.id)}
+        relatedPayments={store.payments}
+      />
     </div>
   );
 };
