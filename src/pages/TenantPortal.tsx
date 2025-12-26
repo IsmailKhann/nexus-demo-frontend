@@ -425,6 +425,7 @@ const TenantPortal = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="requests"><Wrench className="h-4 w-4 mr-2" />My Requests</TabsTrigger>
+          <TabsTrigger value="billing"><CreditCard className="h-4 w-4 mr-2" />Billing</TabsTrigger>
           <TabsTrigger value="notifications" className="relative">
             <Bell className="h-4 w-4 mr-2" />
             Notifications
@@ -511,6 +512,11 @@ const TenantPortal = () => {
               );
             })
           )}
+        </TabsContent>
+
+        {/* Billing Tab */}
+        <TabsContent value="billing" className="mt-4">
+          <BillingDashboard />
         </TabsContent>
 
         <TabsContent value="notifications" className="mt-4 space-y-3">
