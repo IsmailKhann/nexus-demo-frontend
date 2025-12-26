@@ -57,12 +57,12 @@ export interface Bill {
 export interface Payment {
   id: string;
   date: string;
-  type: 'Tenant' | 'Vendor' | 'Owner Payout' | 'Deposit Movement';
+  type: 'Tenant' | 'Vendor' | 'Owner Payout' | 'Deposit Movement' | 'Refund';
   payer_payee: string;
   property: string;
   amount: number;
   method: 'ACH' | 'Card' | 'Check' | 'Wire' | 'Cash';
-  status: 'Pending' | 'Cleared' | 'Failed';
+  status: 'Pending' | 'Cleared' | 'Failed' | 'Refunded' | 'Voided';
   reference: string;
   linked_entries: string[];
 }

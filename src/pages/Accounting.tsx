@@ -291,7 +291,7 @@ const Accounting = () => {
                 <CardContent>
                   <div className="border rounded-lg">
                     <Table>
-                      <TableHeader><TableRow><TableHead>Payment #</TableHead><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Payer/Payee</TableHead><TableHead>Property</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Method</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                      <TableHeader><TableRow><TableHead>Payment #</TableHead><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Payer/Payee</TableHead><TableHead>Property</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Method</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                       <TableBody>
                         {store.payments.map((pmt) => (
                           <TableRow key={pmt.id}>
@@ -300,9 +300,22 @@ const Accounting = () => {
                             <TableCell><Badge variant="outline">{pmt.type}</Badge></TableCell>
                             <TableCell>{pmt.payer_payee}</TableCell>
                             <TableCell className="text-muted-foreground">{pmt.property}</TableCell>
-                            <TableCell className="text-right font-mono">${pmt.amount.toLocaleString()}</TableCell>
+                            <TableCell className={`text-right font-mono ${pmt.amount < 0 ? 'text-red-500' : ''}`}>${Math.abs(pmt.amount).toLocaleString()}</TableCell>
                             <TableCell><Badge variant="secondary">{pmt.method}</Badge></TableCell>
                             <TableCell>{getStatusBadge(pmt.status)}</TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm" onClick={() => toast({ title: 'Receipt', description: `Receipt for ${pmt.id} downloaded` })}><Eye className="h-4 w-4" /></Button>
+                              {pmt.status === 'Cleared' && pmt.type !== 'Refund' && (
+                                <Button variant="ghost" size="sm" onClick={() => { store.refundPayment(pmt.id); toast({ title: 'Refund Initiated', description: `Refund for ${pmt.id} is processing` }); }}>
+                                  <ArrowDownRight className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {(pmt.status === 'Pending' || pmt.status === 'Cleared') && pmt.type !== 'Refund' && (
+                                <Button variant="ghost" size="sm" onClick={() => { store.voidPayment(pmt.id); toast({ title: 'Payment Voided', description: `${pmt.id} has been voided` }); }}>
+                                  <AlertTriangle className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
