@@ -246,9 +246,47 @@ export function AccountingViewSelector({
   }
 
   if (currentView === 'by-tenant') {
+    // Build tenant summary list with financial data
+    const tenantSummaries = tenants.map(tenant => {
+      const tenantInvoices = invoices.filter(i => i.tenant_id === tenant.id);
+      const tenantPayments = payments.filter(p => p.payer_payee.includes(tenant.name) && p.type === 'Tenant');
+      
+      const currentBalance = tenantInvoices.reduce((sum, i) => sum + i.balance, 0);
+      const overdueAmount = tenantInvoices
+        .filter(i => i.status === 'Overdue')
+        .reduce((sum, i) => sum + i.balance, 0);
+      const lastPaymentDate = tenantPayments
+        .filter(p => p.status === 'Cleared')
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]?.date || '-';
+      const status = overdueAmount > 0 ? 'Overdue' : 'Good';
+      
+      // Get unit from invoice if available
+      const unit = tenantInvoices[0]?.line_items?.[0]?.description?.match(/Unit \w+/)?.[0] || 'Unit A';
+      
+      return {
+        ...tenant,
+        unit,
+        currentBalance,
+        overdueAmount,
+        lastPaymentDate,
+        status,
+      };
+    });
+
+    // Filter tenant summaries by search
+    const filteredSummaries = tenantSummaries.filter(t => 
+      t.name.toLowerCase().includes(tenantSearch.toLowerCase()) ||
+      t.property.toLowerCase().includes(tenantSearch.toLowerCase())
+    );
+
+    // Apply dropdown filter if a specific tenant is selected
+    const displayedSummaries = selectedTenant 
+      ? filteredSummaries.filter(t => t.id === selectedTenant)
+      : filteredSummaries;
+
     return (
       <div className="space-y-6">
-        {/* Tenant Selector */}
+        {/* Tenant Header & Filters */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -271,9 +309,10 @@ export function AccountingViewSelector({
                 </div>
                 <Select value={selectedTenant} onValueChange={setSelectedTenant}>
                   <SelectTrigger className="w-[250px]">
-                    <SelectValue placeholder="Select tenant" />
+                    <SelectValue placeholder="All Tenants" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="all">All Tenants</SelectItem>
                     {filteredTenants.map(tenant => (
                       <SelectItem key={tenant.id} value={tenant.id}>{tenant.name}</SelectItem>
                     ))}
@@ -284,14 +323,49 @@ export function AccountingViewSelector({
           </CardHeader>
         </Card>
 
-        {selectedTenant ? (
+        {/* Show detail view if tenant selected, otherwise show list */}
+        {selectedTenant && selectedTenant !== 'all' ? (
           <>
+            {/* Back to list link */}
+            <Button 
+              variant="ghost" 
+              className="gap-1 text-muted-foreground hover:text-foreground -mb-2"
+              onClick={() => setSelectedTenant('')}
+            >
+              <ArrowDownRight className="h-4 w-4 rotate-135" />
+              View all tenants
+            </Button>
+
             {/* Tenant Summary Cards */}
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Current Balance</CardTitle>
+                  <CardTitle className="text-sm font-medium">Total Charges</CardTitle>
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    ${tenantData.invoices.reduce((sum, i) => sum + i.total, 0).toLocaleString()}
+                  </div>
+                  <p className="text-xs text-muted-foreground">All time</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Paid</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">
+                    ${tenantData.payments.filter(p => p.status === 'Cleared').reduce((sum, p) => sum + p.amount, 0).toLocaleString()}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Cleared payments</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Outstanding Balance</CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className={`text-2xl font-bold ${tenantBalance > 0 ? 'text-amber-600' : 'text-green-600'}`}>
@@ -305,7 +379,7 @@ export function AccountingViewSelector({
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Last Payment</CardTitle>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
@@ -313,20 +387,6 @@ export function AccountingViewSelector({
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {lastPayment ? lastPayment.date : 'No payments recorded'}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Overdue Amount</CardTitle>
-                  <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-2xl font-bold ${tenantOverdue > 0 ? 'text-destructive' : 'text-green-600'}`}>
-                    ${tenantOverdue.toLocaleString()}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {tenantOverdue > 0 ? 'Past due date' : 'All current'}
                   </p>
                 </CardContent>
               </Card>
@@ -394,10 +454,61 @@ export function AccountingViewSelector({
             </Card>
           </>
         ) : (
+          /* Tenant Accounting List Table - DEFAULT VIEW */
           <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Select a tenant to view their financial history</p>
+            <CardHeader>
+              <CardTitle>Tenant Balances</CardTitle>
+              <CardDescription>Click a row to view detailed financial history</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tenant Name</TableHead>
+                      <TableHead>Property</TableHead>
+                      <TableHead>Unit</TableHead>
+                      <TableHead className="text-right">Current Balance</TableHead>
+                      <TableHead className="text-right">Overdue Amount</TableHead>
+                      <TableHead>Last Payment</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {displayedSummaries.map(tenant => (
+                      <TableRow 
+                        key={tenant.id} 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => setSelectedTenant(tenant.id)}
+                      >
+                        <TableCell className="font-medium">{tenant.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{tenant.property}</TableCell>
+                        <TableCell>{tenant.unit}</TableCell>
+                        <TableCell className={`text-right font-mono ${tenant.currentBalance > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                          ${tenant.currentBalance.toLocaleString()}
+                        </TableCell>
+                        <TableCell className={`text-right font-mono ${tenant.overdueAmount > 0 ? 'text-destructive' : ''}`}>
+                          ${tenant.overdueAmount.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{tenant.lastPaymentDate}</TableCell>
+                        <TableCell>
+                          <Badge variant={tenant.status === 'Good' ? 'default' : 'destructive'} className="gap-1">
+                            {tenant.status === 'Good' ? <CheckCircle className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+                            {tenant.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {displayedSummaries.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                          No tenants found
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         )}
