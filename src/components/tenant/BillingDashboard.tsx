@@ -2,11 +2,15 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { 
   DollarSign, FileText, CreditCard, Clock, CheckCircle, AlertCircle, 
   Download, ArrowRight, Plus, Trash2, Star, Building2, Calendar,
-  RefreshCw, Pause, Play, Shield
+  RefreshCw, Shield, AlertTriangle, Undo2, ChevronRight, Zap
 } from 'lucide-react';
 import { usePaymentStore } from '@/hooks/usePaymentStore';
 import { PayNowModal } from './PayNowModal';
@@ -39,21 +43,39 @@ export const BillingDashboard = () => {
   const [addMethodOpen, setAddMethodOpen] = useState(false);
   const [setupRecurringOpen, setSetupRecurringOpen] = useState(false);
   const [invoiceDetailOpen, setInvoiceDetailOpen] = useState(false);
+  const [chargeDetailOpen, setChargeDetailOpen] = useState(false);
+  const [selectedCharge, setSelectedCharge] = useState<TenantInvoice | null>(null);
 
   const outstandingBalance = getOutstandingBalance();
   const lastPayment = getLastPayment();
   const recurringPlan = getTenantRecurringPlan();
   const openInvoices = tenantInvoices.filter(i => i.balance > 0);
   const paidInvoices = tenantInvoices.filter(i => i.status === 'paid');
+  const defaultMethod = paymentMethods.find(m => m.isDefault);
+
+  // Get next due date
+  const nextDueInvoice = openInvoices.sort((a, b) => 
+    new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+  )[0];
+
+  // Get status for balance
+  const getBalanceStatus = () => {
+    if (outstandingBalance === 0) return 'paid';
+    if (openInvoices.some(i => i.status === 'overdue')) return 'overdue';
+    if (openInvoices.some(i => i.status === 'partial')) return 'partial';
+    return 'due';
+  };
+
+  const balanceStatus = getBalanceStatus();
 
   const handlePayNow = (invoice: TenantInvoice) => {
     setSelectedInvoice(invoice);
     setPayNowOpen(true);
   };
 
-  const handleViewInvoice = (invoice: TenantInvoice) => {
-    setSelectedInvoice(invoice);
-    setInvoiceDetailOpen(true);
+  const handleViewCharge = (charge: TenantInvoice) => {
+    setSelectedCharge(charge);
+    setChargeDetailOpen(true);
   };
 
   const handleRemoveMethod = (methodId: string) => {
@@ -74,427 +96,485 @@ export const BillingDashboard = () => {
   const handleCancelRecurring = () => {
     if (recurringPlan) {
       cancelRecurringPayment(recurringPlan.id);
-      toast({ title: 'Recurring Payment Cancelled' });
+      toast({ title: 'Auto-Pay Cancelled' });
     }
   };
 
-  const getInvoiceStatusBadge = (status: string) => {
-    const config: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: any }> = {
-      open: { variant: 'secondary', icon: Clock },
-      overdue: { variant: 'destructive', icon: AlertCircle },
-      paid: { variant: 'default', icon: CheckCircle },
-      partial: { variant: 'outline', icon: Clock },
+  const getStatusBadge = (status: string) => {
+    const config: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
+      open: { variant: 'secondary', label: 'Due' },
+      overdue: { variant: 'destructive', label: 'Overdue' },
+      paid: { variant: 'default', label: 'Paid' },
+      partial: { variant: 'outline', label: 'Partially Paid' },
+      due: { variant: 'secondary', label: 'Due' },
     };
-    const c = config[status] || { variant: 'outline', icon: Clock };
-    const Icon = c.icon;
-    return <Badge variant={c.variant} className="gap-1"><Icon className="h-3 w-3" />{status}</Badge>;
+    const c = config[status] || { variant: 'outline', label: status };
+    return <Badge variant={c.variant}>{c.label}</Badge>;
   };
 
-  const getPaymentStatusBadge = (status: string) => {
+  const getPaymentStatusBadge = (status: string, refundAmount?: number) => {
+    if (status === 'refunded') {
+      return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">Refunded</Badge>;
+    }
+    if (status === 'partial_refund') {
+      return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">Partial Refund</Badge>;
+    }
     const config: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
       cleared: { variant: 'default' },
       pending: { variant: 'secondary' },
       processing: { variant: 'outline' },
       failed: { variant: 'destructive' },
-      refunded: { variant: 'outline' },
     };
     return <Badge variant={config[status]?.variant || 'outline'}>{status}</Badge>;
   };
 
+  const getChargeTypeIcon = (type: string) => {
+    switch (type) {
+      case 'rent': return <Building2 className="h-4 w-4" />;
+      case 'utility': return <Zap className="h-4 w-4" />;
+      case 'fee': return <AlertTriangle className="h-4 w-4" />;
+      default: return <FileText className="h-4 w-4" />;
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className={outstandingBalance > 0 ? 'border-destructive/50' : ''}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Outstanding Balance</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${outstandingBalance > 0 ? 'text-destructive' : 'text-green-600'}`}>
-              ${outstandingBalance.toLocaleString()}
+      {/* 1️⃣ BALANCE SUMMARY - Prominent top section */}
+      <Card className={`border-2 ${balanceStatus === 'overdue' ? 'border-destructive bg-destructive/5' : balanceStatus === 'due' ? 'border-primary/50' : 'border-green-500/50 bg-green-500/5'}`}>
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Current Balance</p>
+              <div className="flex items-center gap-3">
+                <span className={`text-4xl font-bold ${balanceStatus === 'overdue' ? 'text-destructive' : balanceStatus === 'paid' ? 'text-green-600' : ''}`}>
+                  ${outstandingBalance.toLocaleString()}
+                </span>
+                {getStatusBadge(balanceStatus)}
+              </div>
+              {nextDueInvoice && outstandingBalance > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Due by {new Date(nextDueInvoice.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </p>
+              )}
+              {outstandingBalance === 0 && (
+                <p className="text-sm text-green-600">You're all caught up!</p>
+              )}
             </div>
             {outstandingBalance > 0 && (
-              <Button size="sm" className="mt-2 w-full" onClick={() => openInvoices[0] && handlePayNow(openInvoices[0])}>
-                Pay Now <ArrowRight className="h-4 w-4 ml-1" />
+              <Button size="lg" className="w-full md:w-auto" onClick={() => openInvoices[0] && handlePayNow(openInvoices[0])}>
+                <DollarSign className="h-5 w-5 mr-2" />
+                Pay Now
+                <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Upcoming Rent</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">$2,500</div>
-            <p className="text-xs text-muted-foreground">Due January 5, 2026</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Last Payment</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${lastPayment?.amount.toLocaleString() || '0'}</div>
-            <p className="text-xs text-muted-foreground">{lastPayment?.date || 'No payments yet'}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Auto-Pay</CardTitle>
-            <RefreshCw className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{recurringPlan ? 'Active' : 'Off'}</div>
-            {recurringPlan ? (
-              <p className="text-xs text-muted-foreground">Next: {recurringPlan.nextRunDate}</p>
-            ) : (
-              <Button size="sm" variant="outline" className="mt-2 w-full" onClick={() => setSetupRecurringOpen(true)}>
-                Set Up Auto-Pay
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Tabs */}
-      <Tabs defaultValue="invoices" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="invoices">Invoices</TabsTrigger>
-          <TabsTrigger value="payments">Payment History</TabsTrigger>
-          <TabsTrigger value="methods">Payment Methods</TabsTrigger>
-          <TabsTrigger value="recurring">Recurring Payments</TabsTrigger>
-          <TabsTrigger value="deposit">Security Deposit</TabsTrigger>
-        </TabsList>
-
-        {/* Invoices Tab */}
-        <TabsContent value="invoices">
-          <Card>
-            <CardHeader>
-              <CardTitle>Invoices</CardTitle>
-              <CardDescription>View and pay your invoices</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Open Invoices */}
-              {openInvoices.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm text-muted-foreground">Open / Overdue</h4>
-                  {openInvoices.map(inv => (
-                    <div key={inv.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <FileText className="h-5 w-5 text-primary" />
+      {/* 2️⃣ LEASE & RENT CHARGES */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Lease & Rent Charges
+          </CardTitle>
+          <CardDescription>Your current and past charges</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-lg border overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left p-3 font-medium text-sm">Description</th>
+                  <th className="text-left p-3 font-medium text-sm hidden md:table-cell">Billing Period</th>
+                  <th className="text-right p-3 font-medium text-sm">Amount</th>
+                  <th className="text-right p-3 font-medium text-sm">Balance</th>
+                  <th className="text-center p-3 font-medium text-sm">Status</th>
+                  <th className="text-right p-3 font-medium text-sm">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {tenantInvoices.map(charge => (
+                  <tr 
+                    key={charge.id} 
+                    className="hover:bg-muted/30 cursor-pointer transition-colors"
+                    onClick={() => handleViewCharge(charge)}
+                  >
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <div className={`p-1.5 rounded ${charge.chargeType === 'rent' ? 'bg-primary/10 text-primary' : charge.chargeType === 'fee' ? 'bg-amber-500/10 text-amber-600' : 'bg-blue-500/10 text-blue-600'}`}>
+                          {getChargeTypeIcon(charge.chargeType)}
                         </div>
                         <div>
-                          <p className="font-medium">{inv.description}</p>
-                          <p className="text-sm text-muted-foreground">Due: {inv.dueDate}</p>
+                          <p className="font-medium">{charge.description}</p>
+                          <p className="text-xs text-muted-foreground md:hidden">{charge.billingPeriod || '-'}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="font-mono font-bold">${inv.balance.toLocaleString()}</p>
-                          {getInvoiceStatusBadge(inv.status)}
-                        </div>
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleViewInvoice(inv)}>
-                            View
+                    </td>
+                    <td className="p-3 text-sm text-muted-foreground hidden md:table-cell">
+                      {charge.billingPeriod || '-'}
+                    </td>
+                    <td className="p-3 text-right font-mono">${charge.amount.toLocaleString()}</td>
+                    <td className="p-3 text-right font-mono font-medium">
+                      ${charge.balance.toLocaleString()}
+                    </td>
+                    <td className="p-3 text-center">{getStatusBadge(charge.status)}</td>
+                    <td className="p-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {charge.balance > 0 && (
+                          <Button 
+                            size="sm" 
+                            onClick={(e) => { e.stopPropagation(); handlePayNow(charge); }}
+                          >
+                            Pay
                           </Button>
-                          <Button size="sm" onClick={() => handlePayNow(inv)}>
-                            Pay Now
-                          </Button>
-                        </div>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleViewCharge(charge); }}>
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </div>
-                    </div>
-                  ))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 3️⃣ AUTO-PAY SETTINGS */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="h-5 w-5" />
+            Auto-Pay Settings
+          </CardTitle>
+          <CardDescription>Set up automatic rent payments</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {recurringPlan && recurringPlan.status === 'active' ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-green-500/5 border border-green-500/30 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-green-700">Auto-Pay is Active</p>
+                    <p className="text-sm text-muted-foreground">
+                      ${recurringPlan.amount.toLocaleString()} • Monthly • {paymentMethods.find(m => m.id === recurringPlan.paymentMethodId)?.type === 'card' ? 'Card' : 'Bank'} •••• {paymentMethods.find(m => m.id === recurringPlan.paymentMethodId)?.last4}
+                    </p>
+                  </div>
                 </div>
+                <Badge variant="default">Active</Badge>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="p-4 border rounded-lg">
+                  <p className="text-sm text-muted-foreground">Frequency</p>
+                  <p className="text-lg font-bold capitalize">{recurringPlan.frequency}</p>
+                </div>
+                <div className="p-4 border rounded-lg">
+                  <p className="text-sm text-muted-foreground">Next Payment</p>
+                  <p className="text-lg font-bold">{new Date(recurringPlan.nextRunDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                </div>
+                <div className="p-4 border rounded-lg">
+                  <p className="text-sm text-muted-foreground">Payment Method</p>
+                  <div className="flex items-center gap-2">
+                    {paymentMethods.find(m => m.id === recurringPlan.paymentMethodId)?.type === 'card' ? (
+                      <CreditCard className="h-4 w-4" />
+                    ) : (
+                      <Building2 className="h-4 w-4" />
+                    )}
+                    <span className="font-medium">•••• {paymentMethods.find(m => m.id === recurringPlan.paymentMethodId)?.last4}</span>
+                  </div>
+                </div>
+              </div>
+
+              {recurringPlan.lastRunDate && (
+                <p className="text-sm text-muted-foreground">
+                  Last payment: {recurringPlan.lastRunDate} • Status: {recurringPlan.lastRunStatus === 'success' ? '✓ Success' : '✗ Failed'}
+                </p>
               )}
 
-              {/* Paid Invoices */}
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm text-muted-foreground">Paid</h4>
-                {paidInvoices.map(inv => (
-                  <div key={inv.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{inv.description}</p>
-                        <p className="text-sm text-muted-foreground">Paid: {inv.paidAt?.split('T')[0]}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <p className="font-mono">${inv.amount.toLocaleString()}</p>
-                      <Button variant="ghost" size="sm" onClick={() => handleViewInvoice(inv)}>
-                        <Download className="h-4 w-4 mr-1" />
-                        Receipt
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              <Button variant="outline" onClick={handleCancelRecurring}>
+                Disable Auto-Pay
+              </Button>
 
-        {/* Payment History Tab */}
-        <TabsContent value="payments">
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment History</CardTitle>
-              <CardDescription>All your past payments</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {tenantPayments.map(pmt => (
-                  <div key={pmt.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                        pmt.status === 'cleared' ? 'bg-green-500/10' : 
-                        pmt.status === 'pending' ? 'bg-yellow-500/10' : 'bg-red-500/10'
-                      }`}>
-                        {pmt.method === 'card' ? <CreditCard className="h-5 w-5" /> : <Building2 className="h-5 w-5" />}
+              {/* Check for expiring payment method */}
+              {(() => {
+                const method = paymentMethods.find(m => m.id === recurringPlan.paymentMethodId);
+                if (method?.type === 'card' && method.expiryYear && method.expiryMonth) {
+                  const now = new Date();
+                  const expiryDate = new Date(method.expiryYear, method.expiryMonth - 1);
+                  const threeMonthsFromNow = new Date();
+                  threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
+                  if (expiryDate <= threeMonthsFromNow) {
+                    return (
+                      <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-700">
+                        <AlertTriangle className="h-4 w-4" />
+                        <span className="text-sm">Your payment card expires {method.expiryMonth}/{method.expiryYear}. Please update before next payment.</span>
                       </div>
-                      <div>
-                        <p className="font-medium">{pmt.description}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {pmt.method === 'card' ? 'Card' : 'Bank'} •••• {pmt.methodLast4} • {pmt.date}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="font-mono font-bold">${pmt.amount.toLocaleString()}</p>
-                        {getPaymentStatusBadge(pmt.status)}
-                      </div>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => toast({ title: 'Receipt Downloaded', description: `Receipt for payment ${pmt.id}` })}>
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        {pmt.status === 'cleared' && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => toast({ 
-                              title: 'Dispute Submitted', 
-                              description: 'A support ticket has been created. Our team will contact you within 24 hours.' 
-                            })}
-                          >
-                            <AlertCircle className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Payment Methods Tab */}
-        <TabsContent value="methods">
-          <Card>
-            <CardHeader>
+                    );
+                  }
+                }
+                return null;
+              })()}
+            </div>
+          ) : (
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Payment Methods</CardTitle>
-                  <CardDescription>Manage your saved payment methods</CardDescription>
+                <div className="flex items-center gap-3">
+                  <Switch id="autopay" checked={false} onCheckedChange={() => setSetupRecurringOpen(true)} />
+                  <Label htmlFor="autopay" className="font-medium">Enable Auto-Pay</Label>
                 </div>
-                <Button onClick={() => setAddMethodOpen(true)}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Method
-                </Button>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {paymentMethods.map(method => (
-                  <div key={method.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center">
-                        {method.type === 'card' ? (
-                          <CreditCard className="h-6 w-6" />
-                        ) : (
-                          <Building2 className="h-6 w-6" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">
-                            {method.type === 'card' ? method.brand : method.bankName} •••• {method.last4}
-                          </p>
-                          {method.isDefault && <Badge variant="secondary">Default</Badge>}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {method.nickname}
-                          {method.type === 'card' && ` • Expires ${method.expiryMonth}/${method.expiryYear}`}
-                        </p>
-                      </div>
-                    </div>
+              <p className="text-sm text-muted-foreground">
+                Never miss a payment. Set up automatic payments to have your rent charged automatically each month.
+              </p>
+              <Button onClick={() => setSetupRecurringOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                Set Up Auto-Pay
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 4️⃣ PAYMENT METHODS */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Payment Methods
+              </CardTitle>
+              <CardDescription>Manage your saved cards and bank accounts</CardDescription>
+            </div>
+            <Button onClick={() => setAddMethodOpen(true)}>
+              <Plus className="h-4 w-4 mr-1" />
+              Add Method
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {paymentMethods.map(method => (
+              <div key={method.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${method.type === 'card' ? 'bg-primary/10' : 'bg-blue-500/10'}`}>
+                    {method.type === 'card' ? (
+                      <CreditCard className="h-6 w-6 text-primary" />
+                    ) : (
+                      <Building2 className="h-6 w-6 text-blue-600" />
+                    )}
+                  </div>
+                  <div>
                     <div className="flex items-center gap-2">
-                      {!method.isDefault && (
-                        <Button variant="ghost" size="sm" onClick={() => handleSetDefault(method.id)}>
-                          <Star className="h-4 w-4 mr-1" />
-                          Set Default
-                        </Button>
+                      <p className="font-medium">
+                        {method.type === 'card' ? method.brand : method.bankName} •••• {method.last4}
+                      </p>
+                      {method.isDefault && <Badge variant="secondary">Default</Badge>}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {method.nickname}
+                      {method.type === 'card' && method.expiryMonth && method.expiryYear && (
+                        <span className={`ml-2 ${
+                          (() => {
+                            const now = new Date();
+                            const expiry = new Date(method.expiryYear, method.expiryMonth - 1);
+                            return expiry <= now ? 'text-destructive' : '';
+                          })()
+                        }`}>
+                          • Expires {method.expiryMonth}/{method.expiryYear}
+                        </span>
                       )}
-                      <Button variant="ghost" size="sm" onClick={() => handleRemoveMethod(method.id)}>
-                        <Trash2 className="h-4 w-4" />
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!method.isDefault && (
+                    <Button variant="ghost" size="sm" onClick={() => handleSetDefault(method.id)}>
+                      <Star className="h-4 w-4 mr-1" />
+                      Set Default
+                    </Button>
+                  )}
+                  {!method.isDefault && (
+                    <Button variant="ghost" size="sm" onClick={() => handleRemoveMethod(method.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 5️⃣ PAYMENT HISTORY & RECEIPTS */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Payment History & Receipts
+          </CardTitle>
+          <CardDescription>View all your past payments and download receipts</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {tenantPayments.map(pmt => (
+              <div key={pmt.id} className="p-4 border rounded-lg hover:bg-muted/30 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                      pmt.status === 'cleared' ? 'bg-green-500/10' : 
+                      pmt.status === 'pending' ? 'bg-yellow-500/10' :
+                      pmt.status === 'refunded' || pmt.status === 'partial_refund' ? 'bg-amber-500/10' :
+                      'bg-red-500/10'
+                    }`}>
+                      {pmt.status === 'refunded' || pmt.status === 'partial_refund' ? (
+                        <Undo2 className="h-5 w-5 text-amber-600" />
+                      ) : pmt.method === 'card' ? (
+                        <CreditCard className="h-5 w-5" />
+                      ) : (
+                        <Building2 className="h-5 w-5" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium">{pmt.description}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {pmt.method === 'card' ? 'Card' : 'Bank'} •••• {pmt.methodLast4} • {new Date(pmt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="font-mono font-bold">${pmt.amount.toLocaleString()}</p>
+                      {getPaymentStatusBadge(pmt.status, pmt.refundAmount)}
+                    </div>
+                    <div className="flex gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => toast({ title: 'Receipt Downloaded', description: `Receipt for payment ${pmt.reference}` })}
+                      >
+                        <Download className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Recurring Payments Tab */}
-        <TabsContent value="recurring">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Recurring Payments</CardTitle>
-                  <CardDescription>Manage automatic rent payments</CardDescription>
                 </div>
-                {!recurringPlan && (
-                  <Button onClick={() => setSetupRecurringOpen(true)}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Set Up Auto-Pay
-                  </Button>
+
+                {/* 6️⃣ REFUND VISIBILITY */}
+                {(pmt.status === 'refunded' || pmt.status === 'partial_refund') && pmt.refundAmount && (
+                  <div className="mt-3 p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                    <div className="flex items-center gap-2 text-amber-700 mb-1">
+                      <Undo2 className="h-4 w-4" />
+                      <span className="font-medium">
+                        {pmt.status === 'refunded' ? 'Full Refund' : 'Partial Refund'}
+                      </span>
+                    </div>
+                    <div className="grid gap-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Refund Amount</span>
+                        <span className="font-mono font-medium text-amber-700">-${pmt.refundAmount.toLocaleString()}</span>
+                      </div>
+                      {pmt.refundDate && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Refund Date</span>
+                          <span>{new Date(pmt.refundDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        </div>
+                      )}
+                      {pmt.refundReason && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Reason</span>
+                          <span>{pmt.refundReason}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Original Payment</span>
+                        <span className="font-mono">{pmt.reference}</span>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
-            </CardHeader>
-            <CardContent>
-              {recurringPlan ? (
-                <div className="space-y-4">
-                  <div className="p-4 border rounded-lg bg-green-500/5 border-green-500/30">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <RefreshCw className="h-5 w-5 text-green-600" />
-                        <span className="font-medium">Auto-Pay is Active</span>
-                      </div>
-                      <Badge variant="default">
-                        {recurringPlan.status === 'active' ? 'Active' : 'Paused'}
-                      </Badge>
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Amount</p>
-                        <p className="text-lg font-bold">${recurringPlan.amount.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Frequency</p>
-                        <p className="text-lg font-bold capitalize">{recurringPlan.frequency}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Next Payment</p>
-                        <p className="text-lg font-bold">{recurringPlan.nextRunDate}</p>
-                      </div>
-                    </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 7️⃣ SECURITY DEPOSIT */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Security Deposit
+          </CardTitle>
+          <CardDescription>Your security deposit information</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="p-4 border rounded-lg">
+              <p className="text-sm text-muted-foreground">Deposit Amount</p>
+              <p className="text-3xl font-bold text-primary">${tenantDeposit.amount.toLocaleString()}</p>
+              <Badge variant="secondary" className="mt-2 capitalize">{tenantDeposit.status}</Badge>
+            </div>
+            <div className="p-4 border rounded-lg">
+              <p className="text-sm text-muted-foreground">Held Since</p>
+              <p className="text-lg font-medium">{new Date(tenantDeposit.heldSince).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Held in a secure trust account
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <h4 className="font-medium mb-3">Deposit History</h4>
+            <div className="space-y-2">
+              {tenantDeposit.history.map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <p className="font-medium">{item.description}</p>
+                    <p className="text-sm text-muted-foreground">{new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                   </div>
-                  
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={handleCancelRecurring}>
-                      Cancel Auto-Pay
-                    </Button>
-                  </div>
+                  <span className="font-mono text-green-600">+${item.amount.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
 
-                  {/* Upcoming scheduled payments */}
-                  <div className="mt-6">
-                    <h4 className="font-medium mb-3">Upcoming Scheduled Payments</h4>
-                    <div className="space-y-2">
-                      {[0, 1, 2].map(i => {
-                        const date = new Date(recurringPlan.nextRunDate);
-                        date.setMonth(date.getMonth() + i);
-                        return (
-                          <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
-                            <div className="flex items-center gap-3">
-                              <Calendar className="h-4 w-4 text-muted-foreground" />
-                              <span>{date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
-                            </div>
-                            <span className="font-mono">${recurringPlan.amount.toLocaleString()}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <RefreshCw className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="font-medium mb-2">No Auto-Pay Set Up</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Set up automatic payments to never miss a rent deadline
-                  </p>
-                  <Button onClick={() => setSetupRecurringOpen(true)}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Set Up Auto-Pay
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+            <p className="text-sm text-muted-foreground">
+              <strong>Note:</strong> Your security deposit will be returned within 30 days of move-out, 
+              less any deductions for damages or unpaid rent. You'll receive an itemized statement.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Security Deposit Tab */}
-        <TabsContent value="deposit">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Security Deposit
-              </CardTitle>
-              <CardDescription>Your security deposit information</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="p-4 border rounded-lg">
-                  <p className="text-sm text-muted-foreground">Deposit Amount</p>
-                  <p className="text-3xl font-bold text-primary">${tenantDeposit.amount.toLocaleString()}</p>
-                  <Badge variant="secondary" className="mt-2">{tenantDeposit.status}</Badge>
-                </div>
-                <div className="p-4 border rounded-lg">
-                  <p className="text-sm text-muted-foreground">Held Since</p>
-                  <p className="text-lg font-medium">{tenantDeposit.heldSince}</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Your deposit is held in a secure trust account
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <h4 className="font-medium mb-3">Deposit History</h4>
-                <div className="space-y-2">
-                  {tenantDeposit.history.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <p className="font-medium">{item.description}</p>
-                        <p className="text-sm text-muted-foreground">{item.date}</p>
-                      </div>
-                      <span className="font-mono text-green-600">+${item.amount.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-                <p className="text-sm text-muted-foreground">
-                  <strong>Note:</strong> Your security deposit will be returned within 30 days of move-out, 
-                  less any deductions for damages or unpaid rent. You'll receive an itemized statement.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* 8️⃣ NEXUS SUBSCRIPTION (Platform Fee) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Nexus Subscription (Platform Fee)</CardTitle>
+          <CardDescription>Your Nexus portal subscription</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div>
+              <p className="font-medium">Tenant Portal Access</p>
+              <p className="text-sm text-muted-foreground">Included with your lease</p>
+            </div>
+            <div className="text-right">
+              <p className="text-lg font-bold text-green-600">Free</p>
+              <Badge variant="default">Active</Badge>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground mt-4">
+            Portal access is included as part of your lease agreement. No additional subscription fees apply.
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Modals */}
       <PayNowModal
@@ -525,6 +605,96 @@ export const BillingDashboard = () => {
           setPayNowOpen(true);
         }}
       />
+
+      {/* Charge Detail Side Panel */}
+      <Sheet open={chargeDetailOpen} onOpenChange={setChargeDetailOpen}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Charge Details</SheetTitle>
+            <SheetDescription>{selectedCharge?.description}</SheetDescription>
+          </SheetHeader>
+          
+          {selectedCharge && (
+            <div className="mt-6 space-y-6">
+              {/* Summary */}
+              <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Invoice ID</span>
+                  <span className="font-mono text-sm">{selectedCharge.id}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Billing Period</span>
+                  <span>{selectedCharge.billingPeriod || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Due Date</span>
+                  <span>{new Date(selectedCharge.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Status</span>
+                  {getStatusBadge(selectedCharge.status)}
+                </div>
+                <Separator />
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total Amount</span>
+                  <span className="font-mono font-bold">${selectedCharge.amount.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Balance Due</span>
+                  <span className={`font-mono font-bold ${selectedCharge.balance > 0 ? 'text-destructive' : 'text-green-600'}`}>
+                    ${selectedCharge.balance.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Line Items */}
+              <div>
+                <h4 className="font-medium mb-3">Line Items</h4>
+                <div className="space-y-2">
+                  {selectedCharge.lineItems.map((item, idx) => (
+                    <div key={idx} className="flex justify-between p-3 border rounded-lg">
+                      <span>{item.description}</span>
+                      <span className="font-mono">${item.amount.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Payment History for this charge */}
+              <div>
+                <h4 className="font-medium mb-3">Payment History</h4>
+                {tenantPayments.filter(p => p.invoiceId === selectedCharge.id).length > 0 ? (
+                  <div className="space-y-2">
+                    {tenantPayments.filter(p => p.invoiceId === selectedCharge.id).map(pmt => (
+                      <div key={pmt.id} className="flex justify-between p-3 border rounded-lg">
+                        <div>
+                          <p className="font-medium">${pmt.amount.toLocaleString()}</p>
+                          <p className="text-sm text-muted-foreground">{pmt.date}</p>
+                        </div>
+                        {getPaymentStatusBadge(pmt.status)}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No payments applied yet</p>
+                )}
+              </div>
+
+              {selectedCharge.balance > 0 && (
+                <Button 
+                  className="w-full" 
+                  onClick={() => {
+                    setChargeDetailOpen(false);
+                    handlePayNow(selectedCharge);
+                  }}
+                >
+                  Pay ${selectedCharge.balance.toLocaleString()}
+                </Button>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

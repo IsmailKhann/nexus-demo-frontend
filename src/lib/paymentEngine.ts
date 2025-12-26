@@ -36,6 +36,8 @@ export interface TenantInvoice {
   property: string;
   unit: string;
   description: string;
+  billingPeriod?: string;
+  chargeType: 'rent' | 'utility' | 'fee' | 'other';
   amount: number;
   balance: number;
   dueDate: string;
@@ -52,11 +54,14 @@ export interface TenantPayment {
   amount: number;
   method: 'card' | 'ach';
   methodLast4: string;
-  status: 'pending' | 'processing' | 'cleared' | 'failed' | 'refunded';
+  status: 'pending' | 'processing' | 'cleared' | 'failed' | 'refunded' | 'partial_refund';
   date: string;
   reference: string;
   description: string;
   receiptUrl?: string;
+  refundAmount?: number;
+  refundDate?: string;
+  refundReason?: string;
 }
 
 export interface PaymentResult {
@@ -292,6 +297,8 @@ export const mockTenantInvoices: TenantInvoice[] = [
     property: 'Greenway Apts',
     unit: 'Unit 101',
     description: 'January 2026 Rent',
+    billingPeriod: 'Jan 1 - Jan 31, 2026',
+    chargeType: 'rent',
     amount: 2500,
     balance: 2500,
     dueDate: '2026-01-05',
@@ -303,11 +310,31 @@ export const mockTenantInvoices: TenantInvoice[] = [
     ],
   },
   {
+    id: 'tinv_005',
+    tenantId: 't_demo',
+    property: 'Greenway Apts',
+    unit: 'Unit 101',
+    description: 'Water Bill - December',
+    billingPeriod: 'Dec 1 - Dec 31, 2025',
+    chargeType: 'utility',
+    amount: 85,
+    balance: 85,
+    dueDate: '2026-01-10',
+    status: 'open',
+    createdAt: '2025-12-28',
+    lineItems: [
+      { description: 'Water Usage', amount: 65 },
+      { description: 'Sewer Fee', amount: 20 },
+    ],
+  },
+  {
     id: 'tinv_002',
     tenantId: 't_demo',
     property: 'Greenway Apts',
     unit: 'Unit 101',
     description: 'December 2025 Rent',
+    billingPeriod: 'Dec 1 - Dec 31, 2025',
+    chargeType: 'rent',
     amount: 2500,
     balance: 0,
     dueDate: '2025-12-05',
@@ -325,6 +352,8 @@ export const mockTenantInvoices: TenantInvoice[] = [
     property: 'Greenway Apts',
     unit: 'Unit 101',
     description: 'November 2025 Rent',
+    billingPeriod: 'Nov 1 - Nov 30, 2025',
+    chargeType: 'rent',
     amount: 2500,
     balance: 0,
     dueDate: '2025-11-05',
@@ -342,6 +371,7 @@ export const mockTenantInvoices: TenantInvoice[] = [
     property: 'Greenway Apts',
     unit: 'Unit 101',
     description: 'Late Fee - November',
+    chargeType: 'fee',
     amount: 75,
     balance: 75,
     dueDate: '2025-12-20',
@@ -388,11 +418,30 @@ export const mockTenantPayments: TenantPayment[] = [
     amount: 2500,
     method: 'card',
     methodLast4: '4242',
-    status: 'cleared',
+    status: 'partial_refund',
     date: '2025-10-01',
     reference: 'PAY-OCT2025',
     description: 'October 2025 Rent Payment',
     receiptUrl: '#',
+    refundAmount: 200,
+    refundDate: '2025-10-15',
+    refundReason: 'Maintenance credit applied',
+  },
+  {
+    id: 'tpay_004',
+    tenantId: 't_demo',
+    invoiceId: undefined,
+    amount: 2500,
+    method: 'ach',
+    methodLast4: '6789',
+    status: 'refunded',
+    date: '2025-09-01',
+    reference: 'PAY-SEP2025',
+    description: 'September 2025 Rent Payment',
+    receiptUrl: '#',
+    refundAmount: 2500,
+    refundDate: '2025-09-05',
+    refundReason: 'Duplicate payment refund',
   },
 ];
 
