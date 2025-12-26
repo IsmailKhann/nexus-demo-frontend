@@ -24,6 +24,22 @@ import {
   UserRole,
 } from '@/data/accountingData';
 
+export interface LateFeeConfig {
+  rentDueDay: number;
+  gracePeriodDays: number;
+  lateFeeEnabled: boolean;
+  lateFeePercentage: number;
+  applyOnce: boolean;
+}
+
+const defaultLateFeeConfig: LateFeeConfig = {
+  rentDueDay: 1,
+  gracePeriodDays: 5,
+  lateFeeEnabled: true,
+  lateFeePercentage: 5,
+  applyOnce: true,
+};
+
 export function useAccountingStore() {
   const [accounts, setAccounts] = useState<Account[]>(mockAccounts);
   const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
@@ -36,6 +52,7 @@ export function useAccountingStore() {
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>(mockRecentActivity);
   const [quickBooksState, setQuickBooksState] = useState<QuickBooksState>(mockQuickBooksState);
   const [userRole] = useState<UserRole>(currentUserRole);
+  const [lateFeeConfig, setLateFeeConfig] = useState<LateFeeConfig>(defaultLateFeeConfig);
 
   // Add activity helper
   const addActivity = useCallback((message: string, type: RecentActivity['type']) => {
@@ -357,6 +374,77 @@ export function useAccountingStore() {
     addAuditLog('Report Generated', 'Report', reportId, undefined, JSON.stringify(filters));
   }, [addActivity, addAuditLog]);
 
+  // Late fee configuration
+  const updateLateFeeConfig = useCallback((config: LateFeeConfig) => {
+    setLateFeeConfig(config);
+    addAuditLog('Late Fee Config Updated', 'Settings', 'late_fee_config', undefined, JSON.stringify(config));
+  }, [addAuditLog]);
+
+  // Calculate pending late fees
+  const getPendingLateFees = useCallback(() => {
+    if (!lateFeeConfig.lateFeeEnabled) return [];
+    
+    const today = new Date();
+    const pendingFees: { invoiceId: string; tenant: string; amount: number; feeAmount: number }[] = [];
+    
+    invoices.forEach(inv => {
+      if (inv.status === 'Overdue' && inv.balance > 0) {
+        // Check if late fee already applied
+        const hasLateFee = inv.line_items.some(li => li.description.includes('Late Fee'));
+        if (lateFeeConfig.applyOnce && hasLateFee) return;
+        
+        // Calculate fee based on rent amount (excluding existing fees)
+        const rentAmount = inv.line_items
+          .filter(li => !li.description.includes('Late Fee'))
+          .reduce((sum, li) => sum + li.amount, 0);
+        const feeAmount = Math.round(rentAmount * (lateFeeConfig.lateFeePercentage / 100) * 100) / 100;
+        
+        pendingFees.push({
+          invoiceId: inv.id,
+          tenant: inv.tenant,
+          amount: rentAmount,
+          feeAmount,
+        });
+      }
+    });
+    
+    return pendingFees;
+  }, [invoices, lateFeeConfig]);
+
+  // Apply late fees to invoices
+  const applyLateFees = useCallback(() => {
+    const pendingFees = getPendingLateFees();
+    
+    pendingFees.forEach(fee => {
+      setInvoices(prev => prev.map(inv => {
+        if (inv.id === fee.invoiceId) {
+          const newLineItem = {
+            description: `Late Fee (${lateFeeConfig.lateFeePercentage}%)`,
+            amount: fee.feeAmount,
+          };
+          return {
+            ...inv,
+            line_items: [...inv.line_items, newLineItem],
+            total: inv.total + fee.feeAmount,
+            balance: inv.balance + fee.feeAmount,
+          };
+        }
+        return inv;
+      }));
+      
+      addActivity(`Late fee $${fee.feeAmount.toLocaleString()} applied to ${fee.invoiceId}`, 'invoice');
+      addAuditLog(
+        'Late Fee Applied',
+        'Invoice',
+        fee.invoiceId,
+        `Balance: $${(invoices.find(i => i.id === fee.invoiceId)?.balance || 0).toLocaleString()}`,
+        `Late Fee: $${fee.feeAmount.toLocaleString()} (${lateFeeConfig.lateFeePercentage}%)`
+      );
+    });
+    
+    return pendingFees.length;
+  }, [getPendingLateFees, lateFeeConfig, invoices, addActivity, addAuditLog]);
+
   return {
     // State
     accounts,
@@ -370,6 +458,7 @@ export function useAccountingStore() {
     recentActivity,
     quickBooksState,
     userRole,
+    lateFeeConfig,
     
     // Account operations
     addAccount,
@@ -406,5 +495,10 @@ export function useAccountingStore() {
     
     // Report operations
     runReport,
+    
+    // Late fee operations
+    updateLateFeeConfig,
+    getPendingLateFees,
+    applyLateFees,
   };
 }

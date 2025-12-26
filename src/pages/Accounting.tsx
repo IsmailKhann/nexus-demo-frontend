@@ -7,8 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { 
-  DollarSign, FileText, TrendingUp, Clock, CheckCircle, AlertCircle, Download, Upload, Settings, Search, Filter, RefreshCw, CreditCard, Building2, ArrowUpRight, ArrowDownRight, Plus, Eye, Edit, Send, Shield, Wallet, Users, FileSpreadsheet, AlertTriangle, ChevronRight, Undo2
+  DollarSign, FileText, TrendingUp, Clock, CheckCircle, AlertCircle, Download, Upload, Settings, Search, Filter, RefreshCw, CreditCard, Building2, ArrowUpRight, ArrowDownRight, Plus, Eye, Edit, Send, Shield, Wallet, Users, FileSpreadsheet, AlertTriangle, ChevronRight, Undo2, Globe, Calendar
 } from 'lucide-react';
 import { useAccountingStore } from '@/hooks/useAccountingStore';
 import { calculateARAgingSummary, Payment } from '@/data/accountingData';
@@ -25,6 +26,8 @@ import { KPIDrilldownPanel } from '@/components/accounting/KPIDrilldownPanel';
 import { RecurringPaymentsTab } from '@/components/accounting/RecurringPaymentsTab';
 import { RefundModal } from '@/components/accounting/RefundModal';
 import { PaymentDetailPanel } from '@/components/accounting/PaymentDetailPanel';
+import { AccountingViewSelector, AccountingViewType } from '@/components/accounting/AccountingViewSelector';
+import { LateFeeConfigPanel } from '@/components/accounting/LateFeeConfigPanel';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -33,6 +36,9 @@ const Accounting = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [kpiPeriod, setKpiPeriod] = useState<'month' | 'quarter' | 'year'>('month');
+  
+  // View selector state
+  const [accountingView, setAccountingView] = useState<AccountingViewType>('overall');
   
   // Panel states
   const [ledgerPanelOpen, setLedgerPanelOpen] = useState(false);
@@ -60,6 +66,7 @@ const Accounting = () => {
   const [isRefundProcessing, setIsRefundProcessing] = useState(false);
 
   const arAging = calculateARAgingSummary(store.invoices);
+  const pendingLateFees = store.getPendingLateFees();
   
   const openKpiDrilldown = (type: typeof kpiDrilldownType, agingBucket?: string) => {
     setKpiDrilldownType(type);
@@ -134,7 +141,19 @@ const Accounting = () => {
           <h1 className="text-3xl font-bold tracking-tight">Accounting & Financials</h1>
           <p className="text-muted-foreground">Manage GL, AR, AP, payments, and QuickBooks integration</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap items-center">
+          {/* View Selector */}
+          <ToggleGroup type="single" value={accountingView} onValueChange={(v) => v && setAccountingView(v as AccountingViewType)} className="border rounded-lg p-1">
+            <ToggleGroupItem value="overall" aria-label="Overall view" className="gap-1">
+              <Globe className="h-4 w-4" />Overall
+            </ToggleGroupItem>
+            <ToggleGroupItem value="by-property" aria-label="By property" className="gap-1">
+              <Building2 className="h-4 w-4" />By Property
+            </ToggleGroupItem>
+            <ToggleGroupItem value="by-tenant" aria-label="By tenant" className="gap-1">
+              <Users className="h-4 w-4" />By Tenant
+            </ToggleGroupItem>
+          </ToggleGroup>
           <Button variant="outline" size="sm" onClick={() => setAuditLogOpen(true)}><Shield className="h-4 w-4 mr-1" />Audit Log</Button>
           <Button variant="outline" size="sm"><Download className="h-4 w-4 mr-1" />Export</Button>
           <Button size="sm"><Upload className="h-4 w-4 mr-1" />Import</Button>
@@ -203,7 +222,20 @@ const Accounting = () => {
         </Card>
       </div>
 
-      {/* Main Content */}
+      {/* Property/Tenant View Content */}
+      {accountingView !== 'overall' && (
+        <AccountingViewSelector
+          currentView={accountingView}
+          onViewChange={setAccountingView}
+          invoices={store.invoices}
+          payments={store.payments}
+          transactions={store.transactions}
+          onPaymentClick={handleOpenPaymentDetail}
+        />
+      )}
+
+      {/* Main Content - Only show for Overall view */}
+      {accountingView === 'overall' && (
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3">
           <Tabs defaultValue="gl" className="space-y-4">
@@ -215,6 +247,10 @@ const Accounting = () => {
               <TabsTrigger value="recurring">Recurring</TabsTrigger>
               <TabsTrigger value="deposits">Security Deposits</TabsTrigger>
               <TabsTrigger value="statements">Owner Statements</TabsTrigger>
+              <TabsTrigger value="rules">
+                <Calendar className="h-4 w-4 mr-1" />
+                Rent Rules
+              </TabsTrigger>
               <TabsTrigger value="quickbooks">QuickBooks</TabsTrigger>
               <TabsTrigger value="reports">Reports</TabsTrigger>
             </TabsList>
@@ -494,6 +530,19 @@ const Accounting = () => {
               </Card>
             </TabsContent>
 
+            {/* Rent Rules Tab */}
+            <TabsContent value="rules">
+              <LateFeeConfigPanel
+                config={store.lateFeeConfig}
+                onConfigChange={store.updateLateFeeConfig}
+                onApplyLateFees={() => {
+                  const count = store.applyLateFees();
+                  toast({ title: 'Late Fees Applied', description: `${count} late fee(s) have been applied to overdue invoices` });
+                }}
+                pendingLateFees={pendingLateFees}
+              />
+            </TabsContent>
+
             {/* Reports Tab */}
             <TabsContent value="reports"><ReportsTab onRunReport={store.runReport} /></TabsContent>
           </Tabs>
@@ -521,6 +570,7 @@ const Accounting = () => {
           </Card>
         </div>
       </div>
+      )}
 
       {/* Modals & Panels */}
       <LedgerDrilldownPanel open={ledgerPanelOpen} onClose={() => setLedgerPanelOpen(false)} account={selectedAccount} transactions={store.transactions} onPostJournalEntry={store.postJournalEntry} accounts={store.accounts} />
