@@ -6,8 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   DollarSign, FileText, TrendingUp, Clock, CheckCircle, AlertCircle, Download, Upload, Settings, Search, Filter, RefreshCw, CreditCard, Building2, ArrowUpRight, ArrowDownRight, Plus, Eye, Edit, Send, Shield, Wallet, Users, FileSpreadsheet, AlertTriangle, ChevronRight
@@ -24,6 +22,7 @@ import { RecordPaymentModal } from '@/components/accounting/RecordPaymentModal';
 import { AuditLogModal } from '@/components/accounting/AuditLogModal';
 import { ReportsTab } from '@/components/accounting/ReportsTab';
 import { KPIDrilldownPanel } from '@/components/accounting/KPIDrilldownPanel';
+import { RecurringPaymentsTab } from '@/components/accounting/RecurringPaymentsTab';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -173,6 +172,7 @@ const Accounting = () => {
               <TabsTrigger value="ar">Accounts Receivable</TabsTrigger>
               <TabsTrigger value="ap">Accounts Payable</TabsTrigger>
               <TabsTrigger value="payments">Payments</TabsTrigger>
+              <TabsTrigger value="recurring">Recurring</TabsTrigger>
               <TabsTrigger value="deposits">Security Deposits</TabsTrigger>
               <TabsTrigger value="statements">Owner Statements</TabsTrigger>
               <TabsTrigger value="quickbooks">QuickBooks</TabsTrigger>
@@ -310,6 +310,11 @@ const Accounting = () => {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* Recurring Payments Tab */}
+            <TabsContent value="recurring">
+              <RecurringPaymentsTab />
             </TabsContent>
 
             {/* Security Deposits Tab */}
