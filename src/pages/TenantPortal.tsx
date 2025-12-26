@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
+import { BillingDashboard } from '@/components/tenant/BillingDashboard';
 import {
   Plus,
   AlertTriangle,
@@ -30,6 +31,7 @@ import {
   Wrench,
   Home,
   FileText,
+  CreditCard,
 } from 'lucide-react';
 
 // Types for tenant maintenance requests
