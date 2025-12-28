@@ -432,6 +432,17 @@ interface ApplicationsStore {
   getChecklistStats: (id: string) => { uploaded: number; verified: number; total: number };
   
   // Application actions
+  createApplication: (data: {
+    method: 'invite' | 'manual' | 'convert';
+    applicantName: string;
+    email: string;
+    phone: string;
+    propertyId: string;
+    unitId: string;
+    monthlyRent: number;
+    note: string;
+    leadId: string | null;
+  }) => string;
   updateApplicationStatus: (id: string, status: ApplicationStatus, reason?: string) => void;
   
   // Document actions
@@ -484,6 +495,74 @@ export const useApplicationsStore = create<ApplicationsStore>((set, get) => ({
       verified: items.filter(i => i.status === 'verified').length,
       total: items.length,
     };
+  },
+  
+  createApplication: (data) => {
+    const now = new Date().toISOString();
+    const appId = `APP-${Date.now().toString().slice(-4)}`;
+    
+    // Import property data to get property name
+    const propertyNames: Record<string, string> = {
+      'prop-1': 'Sunset Towers',
+      'prop-2': 'Harbor View Apartments',
+      'prop-3': 'Downtown Lofts',
+      'prop-4': 'Riverside Commons',
+      'prop-5': 'Mountain View Estates',
+    };
+    
+    const newApp: Application = {
+      id: appId,
+      applicant: {
+        name: data.applicantName || 'Pending',
+        email: data.email || '',
+        phone: data.phone || '',
+      },
+      property: propertyNames[data.propertyId] || data.propertyId,
+      propertyId: data.propertyId,
+      unit: `Unit ${data.unitId.replace(/[^0-9A-Za-z]/g, '')}`,
+      unitId: data.unitId,
+      rent: data.monthlyRent,
+      status: 'pending_review',
+      createdAt: now,
+      submittedAt: data.method === 'invite' ? null : now,
+      approvedAt: null,
+      rejectedAt: null,
+      checklist: createEmptyChecklist(),
+      documents: [],
+      esign: { templateId: null, status: 'not_sent', sentTimestamp: null, signedTimestamp: null, expiryDate: null, signers: [] },
+      notes: data.note ? [{
+        id: `note-${Date.now()}`,
+        user: get().currentUser.name,
+        role: get().currentUser.role,
+        text: data.note,
+        timestamp: now,
+      }] : [],
+      lease: null,
+      screeningPassed: false,
+      manualChecks: createEmptyManualChecks(),
+      monthlyIncome: 0,
+      creditScore: null,
+      employmentStatus: 'unknown',
+      pets: false,
+      coApplicants: [],
+      payments: [],
+    };
+    
+    set(state => ({
+      applications: [newApp, ...state.applications],
+    }));
+    
+    get().addAuditLog({
+      actor: get().currentUser.name,
+      actorRole: get().currentUser.role,
+      action: `Application Created (${data.method === 'invite' ? 'Invite' : data.method === 'manual' ? 'Manual' : 'Lead Conversion'})`,
+      target: appId,
+      targetType: 'application',
+      before: null,
+      after: { method: data.method, leadId: data.leadId },
+    });
+    
+    return appId;
   },
   
   updateApplicationStatus: (id, status, reason) => {
