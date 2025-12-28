@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { BillingDashboard } from '@/components/tenant/BillingDashboard';
+import { TenantApplicationView } from '@/components/applications/TenantApplicationView';
 import {
   Plus,
   AlertTriangle,
@@ -32,6 +33,7 @@ import {
   Home,
   FileText,
   CreditCard,
+  ClipboardList,
 } from 'lucide-react';
 
 // Types for tenant maintenance requests
@@ -157,7 +159,7 @@ const statusConfig = {
 const TenantPortal = () => {
   const [requests, setRequests] = useState<TenantRequest[]>(mockRequests);
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
-  const [activeTab, setActiveTab] = useState('requests');
+  const [activeTab, setActiveTab] = useState('application');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<TenantRequest | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -424,7 +426,8 @@ const TenantPortal = () => {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="requests"><Wrench className="h-4 w-4 mr-2" />My Requests</TabsTrigger>
+          <TabsTrigger value="application"><ClipboardList className="h-4 w-4 mr-2" />My Application</TabsTrigger>
+          <TabsTrigger value="requests"><Wrench className="h-4 w-4 mr-2" />Maintenance</TabsTrigger>
           <TabsTrigger value="billing"><CreditCard className="h-4 w-4 mr-2" />Billing</TabsTrigger>
           <TabsTrigger value="notifications" className="relative">
             <Bell className="h-4 w-4 mr-2" />
@@ -436,6 +439,11 @@ const TenantPortal = () => {
             )}
           </TabsTrigger>
         </TabsList>
+
+        {/* Application Tab */}
+        <TabsContent value="application" className="mt-4">
+          <TenantApplicationView applicationId="APP-1003" />
+        </TabsContent>
 
         <TabsContent value="requests" className="mt-4 space-y-4">
           {requests.length === 0 ? (
