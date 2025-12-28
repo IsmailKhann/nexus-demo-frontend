@@ -65,6 +65,18 @@ export interface LeaseData {
   generatedAt: string;
 }
 
+export interface ApplicationPayment {
+  id: string;
+  type: 'application_fee' | 'holding_deposit' | 'security_deposit';
+  amount: number;
+  method: 'Card' | 'ACH';
+  status: 'paid' | 'refunded' | 'partially_refunded';
+  paidAt: string;
+  refundedAmount: number;
+  refundedAt: string | null;
+  refundReason: string | null;
+}
+
 export interface Application {
   id: string;
   applicant: {
@@ -111,6 +123,7 @@ export interface Application {
   employmentStatus: string;
   pets: boolean;
   coApplicants: Array<{ name: string; relationship: string; income: number }>;
+  payments: ApplicationPayment[];
 }
 
 export interface AuditLogEntry {
@@ -221,6 +234,10 @@ const initialApplications: Application[] = [
     employmentStatus: 'full_time',
     pets: true,
     coApplicants: [{ name: 'Michael Johnson', relationship: 'spouse', income: 5800 }],
+    payments: [
+      { id: 'pay-1001-1', type: 'application_fee', amount: 50, method: 'Card', status: 'paid', paidAt: '2025-01-15T10:35:00Z', refundedAmount: 0, refundedAt: null, refundReason: null },
+      { id: 'pay-1001-2', type: 'holding_deposit', amount: 500, method: 'Card', status: 'paid', paidAt: '2025-01-15T10:36:00Z', refundedAmount: 0, refundedAt: null, refundReason: null },
+    ],
   },
   {
     id: 'APP-1002',
@@ -280,6 +297,10 @@ const initialApplications: Application[] = [
     employmentStatus: 'full_time',
     pets: false,
     coApplicants: [],
+    payments: [
+      { id: 'pay-1002-1', type: 'application_fee', amount: 50, method: 'Card', status: 'paid', paidAt: '2025-01-14T09:20:00Z', refundedAmount: 0, refundedAt: null, refundReason: null },
+      { id: 'pay-1002-2', type: 'holding_deposit', amount: 500, method: 'ACH', status: 'paid', paidAt: '2025-01-14T09:22:00Z', refundedAmount: 0, refundedAt: null, refundReason: null },
+    ],
   },
   {
     id: 'APP-1003',
@@ -319,6 +340,10 @@ const initialApplications: Application[] = [
     employmentStatus: 'full_time',
     pets: true,
     coApplicants: [],
+    payments: [
+      { id: 'pay-1003-1', type: 'application_fee', amount: 50, method: 'Card', status: 'paid', paidAt: '2025-01-17T13:05:00Z', refundedAmount: 0, refundedAt: null, refundReason: null },
+      { id: 'pay-1003-2', type: 'holding_deposit', amount: 500, method: 'Card', status: 'paid', paidAt: '2025-01-17T13:07:00Z', refundedAmount: 0, refundedAt: null, refundReason: null },
+    ],
   },
   {
     id: 'APP-1004',
@@ -378,6 +403,10 @@ const initialApplications: Application[] = [
     employmentStatus: 'self_employed',
     pets: false,
     coApplicants: [],
+    payments: [
+      { id: 'pay-1004-1', type: 'application_fee', amount: 50, method: 'Card', status: 'paid', paidAt: '2025-01-10T09:05:00Z', refundedAmount: 0, refundedAt: null, refundReason: null },
+      { id: 'pay-1004-2', type: 'security_deposit', amount: 2200, method: 'ACH', status: 'paid', paidAt: '2025-01-12T10:30:00Z', refundedAmount: 0, refundedAt: null, refundReason: null },
+    ],
   },
 ];
 
@@ -426,6 +455,9 @@ interface ApplicationsStore {
   // E-sign actions
   sendForSignature: (applicationId: string, signers: Array<{ name: string; email: string; role: string }>, message: string, expiryDays: number) => void;
   signLease: (applicationId: string, signerEmail: string) => void;
+  
+  // Payment/Refund actions
+  refundPayment: (applicationId: string, paymentId: string, amount: number, reason: string) => Promise<{ success: boolean; message: string }>;
   
   // Notification actions
   markNotificationRead: (id: string) => void;
@@ -804,6 +836,65 @@ export const useApplicationsStore = create<ApplicationsStore>((set, get) => ({
       before: { signed: false },
       after: { signed: true, signedAt: now, ip: '192.168.1.1' },
     });
+  },
+  
+  refundPayment: async (applicationId, paymentId, amount, reason) => {
+    // Simulate processing delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    const now = new Date().toISOString();
+    const app = get().getApplication(applicationId);
+    const payment = app?.payments.find(p => p.id === paymentId);
+    
+    if (!payment) {
+      return { success: false, message: 'Payment not found' };
+    }
+    
+    const isFullRefund = amount >= payment.amount - payment.refundedAmount;
+    
+    set(state => ({
+      applications: state.applications.map(app => {
+        if (app.id !== applicationId) return app;
+        return {
+          ...app,
+          payments: app.payments.map(p => {
+            if (p.id !== paymentId) return p;
+            return {
+              ...p,
+              status: isFullRefund ? 'refunded' : 'partially_refunded',
+              refundedAmount: p.refundedAmount + amount,
+              refundedAt: now,
+              refundReason: reason,
+            };
+          }),
+        };
+      }),
+      notifications: [
+        ...state.notifications,
+        {
+          id: `notif-${Date.now()}`,
+          to: app?.applicant.email || '',
+          toRole: 'tenant' as UserRole,
+          type: 'refund' as const,
+          message: `A refund of $${amount.toLocaleString()} has been processed for your ${payment.type.replace('_', ' ')}.`,
+          timestamp: now,
+          read: false,
+          applicationId,
+        },
+      ],
+    }));
+    
+    get().addAuditLog({
+      actor: get().currentUser.name,
+      actorRole: get().currentUser.role,
+      action: 'Payment Refunded',
+      target: applicationId,
+      targetType: 'payment',
+      before: { status: payment.status, refundedAmount: payment.refundedAmount },
+      after: { status: isFullRefund ? 'refunded' : 'partially_refunded', refundedAmount: payment.refundedAmount + amount, reason },
+    });
+    
+    return { success: true, message: 'Refund processed successfully' };
   },
   
   markNotificationRead: (id) => {
