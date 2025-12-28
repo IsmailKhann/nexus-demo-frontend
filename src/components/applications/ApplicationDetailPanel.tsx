@@ -296,6 +296,98 @@ export const ApplicationDetailPanel = ({ application, open, onOpenChange }: Appl
                   </Card>
                 </div>
                 
+                {/* Progress Checklist - Admin-controlled */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Progress Checklist</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* Application Details Completed */}
+                    <div className="flex items-center gap-3">
+                      {application.applicant.email && application.applicant.name ? (
+                        <CheckCircle className="h-4 w-4 text-success" />
+                      ) : (
+                        <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30" />
+                      )}
+                      <span className={`text-sm ${application.applicant.email ? '' : 'text-muted-foreground'}`}>
+                        Application Details Completed
+                      </span>
+                    </div>
+                    
+                    {/* Documents Uploaded */}
+                    <div className="flex items-center gap-3">
+                      {checklistStats.uploaded > 0 ? (
+                        checklistStats.uploaded === checklistStats.total ? (
+                          <CheckCircle className="h-4 w-4 text-success" />
+                        ) : (
+                          <Clock className="h-4 w-4 text-warning" />
+                        )
+                      ) : (
+                        <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30" />
+                      )}
+                      <span className={`text-sm ${checklistStats.uploaded > 0 ? '' : 'text-muted-foreground'}`}>
+                        Documents Uploaded ({checklistStats.uploaded}/{checklistStats.total})
+                      </span>
+                    </div>
+                    
+                    {/* Screening Done (Manual) */}
+                    <div className="flex items-center gap-3">
+                      {application.screeningPassed ? (
+                        <CheckCircle className="h-4 w-4 text-success" />
+                      ) : checklistStats.verified > 0 ? (
+                        <Clock className="h-4 w-4 text-warning" />
+                      ) : (
+                        <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30" />
+                      )}
+                      <span className={`text-sm ${application.screeningPassed ? '' : checklistStats.verified > 0 ? '' : 'text-muted-foreground'}`}>
+                        Screening Done (Manual)
+                      </span>
+                    </div>
+                    
+                    {/* Approved for Lease */}
+                    <div className="flex items-center gap-3">
+                      {application.status === 'approved' || application.status === 'ready_to_sign' || application.status === 'sent_for_signature' || application.status === 'signed' ? (
+                        <CheckCircle className="h-4 w-4 text-success" />
+                      ) : application.screeningPassed ? (
+                        <Clock className="h-4 w-4 text-warning" />
+                      ) : (
+                        <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30" />
+                      )}
+                      <span className={`text-sm ${application.approvedAt ? '' : 'text-muted-foreground'}`}>
+                        Approved for Lease
+                      </span>
+                    </div>
+                    
+                    {/* Lease Sent for Signature */}
+                    <div className="flex items-center gap-3">
+                      {application.esign.status === 'sent' || application.esign.status === 'signed' ? (
+                        <CheckCircle className="h-4 w-4 text-success" />
+                      ) : application.lease ? (
+                        <Clock className="h-4 w-4 text-warning" />
+                      ) : (
+                        <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30" />
+                      )}
+                      <span className={`text-sm ${application.esign.status !== 'not_sent' ? '' : 'text-muted-foreground'}`}>
+                        Lease Sent for Signature
+                      </span>
+                    </div>
+                    
+                    {/* Lease Signed */}
+                    <div className="flex items-center gap-3">
+                      {application.status === 'signed' ? (
+                        <CheckCircle className="h-4 w-4 text-success" />
+                      ) : application.esign.status === 'sent' ? (
+                        <Clock className="h-4 w-4 text-warning" />
+                      ) : (
+                        <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30" />
+                      )}
+                      <span className={`text-sm ${application.status === 'signed' ? '' : 'text-muted-foreground'}`}>
+                        Lease Signed
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+                
                 {/* Timeline */}
                 <Card>
                   <CardHeader className="pb-3">

@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
@@ -29,14 +28,17 @@ import {
 } from 'lucide-react';
 import { useApplicationsStore, type Application } from '@/hooks/useApplicationsStore';
 import { ApplicationDetailPanel } from '@/components/applications/ApplicationDetailPanel';
+import { NewApplicationDrawer } from '@/components/applications/NewApplicationDrawer';
+import { toast } from '@/hooks/use-toast';
 
 const Applications = () => {
-  const { applications, auditLogs, getChecklistStats } = useApplicationsStore();
+  const { applications, auditLogs, getChecklistStats, createApplication } = useApplicationsStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [detailPanelOpen, setDetailPanelOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('applications');
+  const [newAppDrawerOpen, setNewAppDrawerOpen] = useState(false);
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
@@ -89,6 +91,15 @@ const Applications = () => {
     setDetailPanelOpen(true);
   };
 
+  const handleCreateApplication = (data: Parameters<typeof createApplication>[0]) => {
+    const newAppId = createApplication(data);
+    toast({
+      title: 'Application created',
+      description: `Application ${newAppId} created successfully`,
+    });
+    setNewAppDrawerOpen(false);
+  };
+
   return (
     <div className="p-6 space-y-6 animate-fade-in">
       {/* Header */}
@@ -99,7 +110,7 @@ const Applications = () => {
             Manage applications, screening, eSignatures, and lease generation
           </p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => setNewAppDrawerOpen(true)}>
           <Plus className="h-4 w-4" />
           New Application
         </Button>
@@ -430,6 +441,13 @@ const Applications = () => {
         application={selectedApp}
         open={detailPanelOpen}
         onOpenChange={setDetailPanelOpen}
+      />
+
+      {/* New Application Drawer */}
+      <NewApplicationDrawer
+        open={newAppDrawerOpen}
+        onOpenChange={setNewAppDrawerOpen}
+        onCreateApplication={handleCreateApplication}
       />
     </div>
   );
