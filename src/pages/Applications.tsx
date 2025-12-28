@@ -2,16 +2,13 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   FileText, 
-  UserCheck, 
   Upload, 
   Download, 
   CheckCircle, 
@@ -27,96 +24,70 @@ import {
   Phone,
   DollarSign,
   Shield,
-  Edit
+  ClipboardList,
+  History,
 } from 'lucide-react';
-import applicationsData from '@/data/applications.json';
-import propertiesData from '@/data/properties.json';
-
-interface Application {
-  id: string;
-  applicantName: string;
-  email: string;
-  phone: string;
-  propertyId: string;
-  unitId: string;
-  status: string;
-  createdAt: string;
-  submittedAt?: string;
-  approvedAt?: string;
-  leaseSigned?: string;
-  monthlyIncome: number;
-  creditScore: number | null;
-  employmentStatus: string;
-  pets: boolean;
-  coApplicants: any[];
-  documents: any[];
-  screeningStatus: string;
-  screeningNotes?: string;
-  leaseStatus: string;
-}
+import { useApplicationsStore, type Application } from '@/hooks/useApplicationsStore';
+import { ApplicationDetailPanel } from '@/components/applications/ApplicationDetailPanel';
 
 const Applications = () => {
-  const [applications] = useState<Application[]>(applicationsData as Application[]);
+  const { applications, auditLogs, getChecklistStats } = useApplicationsStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
+  const [detailPanelOpen, setDetailPanelOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('applications');
-  const [showSignatureDialog, setShowSignatureDialog] = useState(false);
-  const [showDocGenDialog, setShowDocGenDialog] = useState(false);
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       draft: 'bg-muted text-muted-foreground',
       pending_review: 'bg-warning/10 text-warning',
-      screening: 'bg-info/10 text-info',
+      in_screening: 'bg-info/10 text-info',
       manual_review: 'bg-warning/10 text-warning',
       approved: 'bg-success/10 text-success',
-      lease_signed: 'bg-primary/10 text-primary',
+      ready_to_sign: 'bg-primary/10 text-primary',
+      sent_for_signature: 'bg-info/10 text-info',
+      signed: 'bg-success/10 text-success',
       rejected: 'bg-destructive/10 text-destructive'
     };
     return colors[status] || 'bg-muted text-muted-foreground';
   };
 
   const getStatusLabel = (status: string) => {
-    return status.split('_').map(word => 
+    const labels: Record<string, string> = {
+      pending_review: 'Pending Review',
+      in_screening: 'In Screening',
+      manual_review: 'Manual Review',
+      ready_to_sign: 'Ready to Sign',
+      sent_for_signature: 'Awaiting Signature',
+      signed: 'Lease Signed',
+    };
+    return labels[status] || status.split('_').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
   };
 
-  const getScreeningStatusIcon = (status: string) => {
-    switch (status) {
-      case 'clear':
-        return <CheckCircle className="h-4 w-4 text-success" />;
-      case 'manual_review':
-        return <AlertCircle className="h-4 w-4 text-warning" />;
-      case 'in_progress':
-        return <Clock className="h-4 w-4 text-info" />;
-      default:
-        return <Clock className="h-4 w-4 text-muted-foreground" />;
+  const getScreeningStatusIcon = (app: Application) => {
+    const stats = getChecklistStats(app.id);
+    if (stats.verified === stats.total) {
+      return <CheckCircle className="h-4 w-4 text-success" />;
+    } else if (stats.uploaded > 0) {
+      return <Clock className="h-4 w-4 text-info" />;
     }
+    return <AlertCircle className="h-4 w-4 text-muted-foreground" />;
   };
 
   const filteredApplications = applications.filter(app => {
-    const matchesSearch = app.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         app.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = app.applicant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         app.applicant.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const leaseTemplates = [
-    { id: 'standard', name: 'Standard Residential Lease', duration: '12 months' },
-    { id: 'short-term', name: 'Short-Term Lease', duration: '6 months' },
-    { id: 'month-to-month', name: 'Month-to-Month Agreement', duration: 'Monthly' }
-  ];
-
-  const clauseLibrary = [
-    { id: 'pets', name: 'Pet Policy', category: 'Pets' },
-    { id: 'parking', name: 'Parking Rules', category: 'Parking' },
-    { id: 'utilities', name: 'Utilities Responsibility', category: 'Utilities' },
-    { id: 'maintenance', name: 'Maintenance Terms', category: 'Maintenance' },
-    { id: 'sublease', name: 'Sublease Prohibition', category: 'Legal' },
-    { id: 'renewal', name: 'Renewal Terms', category: 'Legal' }
-  ];
+  const handleOpenDetail = (app: Application) => {
+    setSelectedApp(app);
+    setDetailPanelOpen(true);
+  };
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -125,7 +96,7 @@ const Applications = () => {
         <div>
           <h1 className="text-3xl font-bold">Online Leasing</h1>
           <p className="text-muted-foreground mt-1">
-            Manage applications, eSignatures, and automated document generation
+            Manage applications, screening, eSignatures, and lease generation
           </p>
         </div>
         <Button className="gap-2">
@@ -135,11 +106,17 @@ const Applications = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardDescription>Total Applications</CardDescription>
+            <CardTitle className="text-3xl">{applications.length}</CardTitle>
+          </CardHeader>
+        </Card>
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>Pending Review</CardDescription>
-            <CardTitle className="text-3xl">
+            <CardTitle className="text-3xl text-warning">
               {applications.filter(a => a.status === 'pending_review').length}
             </CardTitle>
           </CardHeader>
@@ -147,24 +124,24 @@ const Applications = () => {
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>In Screening</CardDescription>
-            <CardTitle className="text-3xl">
-              {applications.filter(a => a.status === 'screening' || a.status === 'manual_review').length}
+            <CardTitle className="text-3xl text-info">
+              {applications.filter(a => a.status === 'in_screening' || a.status === 'manual_review').length}
             </CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>Ready to Sign</CardDescription>
-            <CardTitle className="text-3xl">
-              {applications.filter(a => a.leaseStatus === 'ready_to_sign').length}
+            <CardTitle className="text-3xl text-primary">
+              {applications.filter(a => a.status === 'ready_to_sign' || a.status === 'sent_for_signature').length}
             </CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardDescription>Signed This Month</CardDescription>
-            <CardTitle className="text-3xl">
-              {applications.filter(a => a.status === 'lease_signed').length}
+            <CardDescription>Signed</CardDescription>
+            <CardTitle className="text-3xl text-success">
+              {applications.filter(a => a.status === 'signed').length}
             </CardTitle>
           </CardHeader>
         </Card>
@@ -177,13 +154,13 @@ const Applications = () => {
             <FileText className="h-4 w-4" />
             Applications
           </TabsTrigger>
-          <TabsTrigger value="templates" className="gap-2">
-            <FileSignature className="h-4 w-4" />
-            Templates & Clauses
-          </TabsTrigger>
           <TabsTrigger value="esignature" className="gap-2">
             <PenTool className="h-4 w-4" />
-            eSignature
+            eSignature Queue
+          </TabsTrigger>
+          <TabsTrigger value="audit" className="gap-2">
+            <History className="h-4 w-4" />
+            Audit Log
           </TabsTrigger>
         </TabsList>
 
@@ -211,9 +188,10 @@ const Applications = () => {
                       <SelectItem value="all">All Status</SelectItem>
                       <SelectItem value="draft">Draft</SelectItem>
                       <SelectItem value="pending_review">Pending Review</SelectItem>
-                      <SelectItem value="screening">Screening</SelectItem>
+                      <SelectItem value="in_screening">In Screening</SelectItem>
                       <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="lease_signed">Lease Signed</SelectItem>
+                      <SelectItem value="ready_to_sign">Ready to Sign</SelectItem>
+                      <SelectItem value="signed">Lease Signed</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -222,27 +200,35 @@ const Applications = () => {
             <CardContent>
               <div className="space-y-3">
                 {filteredApplications.map((app) => {
-                  const property = propertiesData.find(p => p.id === app.propertyId);
+                  const checklistStats = getChecklistStats(app.id);
                   return (
-                    <Card key={app.id} className="hover:shadow-md transition-shadow">
+                    <Card 
+                      key={app.id} 
+                      className="hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => handleOpenDetail(app)}
+                    >
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
-                              <h3 className="font-semibold text-lg">{app.applicantName}</h3>
+                              <h3 className="font-semibold text-lg">{app.applicant.name}</h3>
                               <Badge className={getStatusColor(app.status)}>
                                 {getStatusLabel(app.status)}
                               </Badge>
-                              {getScreeningStatusIcon(app.screeningStatus)}
+                              {getScreeningStatusIcon(app)}
+                              <Badge variant="outline" className="text-xs">
+                                <ClipboardList className="h-3 w-3 mr-1" />
+                                {checklistStats.verified}/{checklistStats.total} docs
+                              </Badge>
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <Mail className="h-4 w-4" />
-                                {app.email}
+                                {app.applicant.email}
                               </div>
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <Phone className="h-4 w-4" />
-                                {app.phone}
+                                {app.applicant.phone}
                               </div>
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <DollarSign className="h-4 w-4" />
@@ -254,28 +240,31 @@ const Applications = () => {
                               </div>
                             </div>
                             <div className="mt-2 text-sm text-muted-foreground">
-                              Property: {property?.name} • Unit: {app.unitId}
+                              Property: {app.property} • {app.unit}
                             </div>
                           </div>
                           <div className="flex gap-2">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => setSelectedApp(app)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenDetail(app);
+                              }}
                             >
                               <Eye className="h-4 w-4 mr-1" />
                               View
                             </Button>
-                            {app.leaseStatus === 'ready_to_sign' && (
+                            {(app.status === 'ready_to_sign' || app.status === 'sent_for_signature') && (
                               <Button
                                 size="sm"
-                                onClick={() => {
-                                  setSelectedApp(app);
-                                  setShowSignatureDialog(true);
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenDetail(app);
                                 }}
                               >
                                 <PenTool className="h-4 w-4 mr-1" />
-                                Sign Lease
+                                E-Sign
                               </Button>
                             )}
                           </div>
@@ -284,73 +273,14 @@ const Applications = () => {
                     </Card>
                   );
                 })}
+                {filteredApplications.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No applications found matching your criteria
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* Templates & Clauses Tab */}
-        <TabsContent value="templates" className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Lease Templates</CardTitle>
-                <CardDescription>Pre-built lease agreements ready for use</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {leaseTemplates.map((template) => (
-                  <Card key={template.id}>
-                    <CardContent className="p-4 flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">{template.name}</h4>
-                        <p className="text-sm text-muted-foreground">{template.duration}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setShowDocGenDialog(true)}
-                        >
-                          Use Template
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Clause Library</CardTitle>
-                <CardDescription>Standard clauses for lease customization</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {clauseLibrary.map((clause) => (
-                    <div
-                      key={clause.id}
-                      className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer transition-colors"
-                    >
-                      <div>
-                        <h4 className="font-medium text-sm">{clause.name}</h4>
-                        <p className="text-xs text-muted-foreground">{clause.category}</p>
-                      </div>
-                      <Button variant="ghost" size="sm">
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
 
         {/* eSignature Tab */}
@@ -363,7 +293,7 @@ const Applications = () => {
             <CardContent>
               <div className="space-y-3">
                 {applications
-                  .filter(app => app.leaseStatus === 'ready_to_sign')
+                  .filter(app => app.status === 'ready_to_sign' || app.status === 'sent_for_signature')
                   .map((app) => (
                     <Card key={app.id}>
                       <CardContent className="p-4 flex items-center justify-between">
@@ -372,32 +302,37 @@ const Applications = () => {
                             <FileSignature className="h-6 w-6 text-primary" />
                           </div>
                           <div>
-                            <h4 className="font-medium">{app.applicantName} - Lease Agreement</h4>
+                            <h4 className="font-medium">{app.applicant.name} - Lease Agreement</h4>
                             <p className="text-sm text-muted-foreground">
-                              Property: {propertiesData.find(p => p.id === app.propertyId)?.name}
+                              {app.property} - {app.unit}
                             </p>
+                            {app.esign.status === 'sent' && (
+                              <p className="text-xs text-info mt-1">
+                                Sent {app.esign.sentTimestamp && new Date(app.esign.sentTimestamp).toLocaleDateString()}
+                                {app.esign.expiryDate && ` • Expires ${new Date(app.esign.expiryDate).toLocaleDateString()}`}
+                              </p>
+                            )}
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm">
+                        <div className="flex items-center gap-3">
+                          <Badge className={app.esign.status === 'sent' ? 'bg-info/10 text-info' : 'bg-muted text-muted-foreground'}>
+                            {app.esign.status === 'sent' ? 'Awaiting Signature' : 'Not Sent'}
+                          </Badge>
+                          <Button variant="outline" size="sm" onClick={() => handleOpenDetail(app)}>
                             <Eye className="h-4 w-4 mr-1" />
-                            Preview
+                            View
                           </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              setSelectedApp(app);
-                              setShowSignatureDialog(true);
-                            }}
-                          >
-                            <PenTool className="h-4 w-4 mr-1" />
-                            Request Signature
-                          </Button>
+                          {app.esign.status === 'not_sent' && (
+                            <Button size="sm" onClick={() => handleOpenDetail(app)}>
+                              <PenTool className="h-4 w-4 mr-1" />
+                              Send
+                            </Button>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
                   ))}
-                {applications.filter(app => app.leaseStatus === 'ready_to_sign').length === 0 && (
+                {applications.filter(app => app.status === 'ready_to_sign' || app.status === 'sent_for_signature').length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     No documents awaiting signature
                   </div>
@@ -414,15 +349,15 @@ const Applications = () => {
             <CardContent>
               <div className="space-y-3">
                 {applications
-                  .filter(app => app.status === 'lease_signed')
+                  .filter(app => app.status === 'signed')
                   .map((app) => (
                     <div key={app.id} className="flex items-center justify-between p-3 rounded-lg border">
                       <div className="flex items-center gap-3">
                         <CheckCircle className="h-5 w-5 text-success" />
                         <div>
-                          <h4 className="font-medium text-sm">{app.applicantName}</h4>
+                          <h4 className="font-medium text-sm">{app.applicant.name}</h4>
                           <p className="text-xs text-muted-foreground">
-                            Signed on {new Date(app.leaseSigned!).toLocaleDateString()}
+                            Signed on {app.esign.signedTimestamp && new Date(app.esign.signedTimestamp).toLocaleDateString()}
                           </p>
                         </div>
                       </div>
@@ -431,174 +366,71 @@ const Applications = () => {
                       </Button>
                     </div>
                   ))}
+                {applications.filter(app => app.status === 'signed').length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No signed documents yet
+                  </div>
+                )}
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Audit Log Tab */}
+        <TabsContent value="audit" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Audit Log</CardTitle>
+              <CardDescription>Complete history of all screening and leasing actions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[500px]">
+                <div className="space-y-3">
+                  {auditLogs.map((log) => (
+                    <div key={log.id} className="flex items-start gap-4 p-3 rounded-lg border hover:bg-accent/50 transition-colors">
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        {log.action.includes('Verified') && <CheckCircle className="h-4 w-4 text-success" />}
+                        {log.action.includes('Rejected') && <AlertCircle className="h-4 w-4 text-destructive" />}
+                        {log.action.includes('Uploaded') && <Upload className="h-4 w-4 text-info" />}
+                        {log.action.includes('Signed') && <PenTool className="h-4 w-4 text-primary" />}
+                        {log.action.includes('Generated') && <FileText className="h-4 w-4 text-primary" />}
+                        {log.action.includes('Sent') && <Mail className="h-4 w-4 text-info" />}
+                        {!['Verified', 'Rejected', 'Uploaded', 'Signed', 'Generated', 'Sent'].some(a => log.action.includes(a)) && (
+                          <History className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm">{log.action}</p>
+                          <Badge variant="outline" className="text-xs">{log.target}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          by {log.actor} ({log.actorRole})
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  {auditLogs.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No audit log entries yet
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      {/* Document Generation Dialog */}
-      <Dialog open={showDocGenDialog} onOpenChange={setShowDocGenDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Generate Lease Document</DialogTitle>
-            <DialogDescription>
-              Auto-fill lease agreement from application data
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Tenant Name</Label>
-                <Input placeholder="Auto-filled from application" />
-              </div>
-              <div className="space-y-2">
-                <Label>Property</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select property" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {propertiesData.map(property => (
-                      <SelectItem key={property.id} value={property.id}>
-                        {property.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Monthly Rent</Label>
-                <Input type="number" placeholder="$0.00" />
-              </div>
-              <div className="space-y-2">
-                <Label>Security Deposit</Label>
-                <Input type="number" placeholder="$0.00" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Lease Start Date</Label>
-                <Input type="date" />
-              </div>
-              <div className="space-y-2">
-                <Label>Lease Duration</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select duration" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="6">6 months</SelectItem>
-                    <SelectItem value="12">12 months</SelectItem>
-                    <SelectItem value="24">24 months</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <Separator />
-            <div className="space-y-2">
-              <Label>Additional Clauses</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {clauseLibrary.slice(0, 4).map(clause => (
-                  <div key={clause.id} className="flex items-center space-x-2">
-                    <input type="checkbox" id={clause.id} className="rounded" />
-                    <label htmlFor={clause.id} className="text-sm cursor-pointer">
-                      {clause.name}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end mt-6">
-              <Button variant="outline" onClick={() => setShowDocGenDialog(false)}>
-                Cancel
-              </Button>
-              <Button>
-                <FileText className="h-4 w-4 mr-2" />
-                Generate Document
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* eSignature Dialog */}
-      <Dialog open={showSignatureDialog} onOpenChange={setShowSignatureDialog}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>eSignature - Lease Agreement</DialogTitle>
-            <DialogDescription>
-              Request signature from {selectedApp?.applicantName}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {/* Document Preview */}
-            <div className="border rounded-lg p-6 bg-muted/30 min-h-[400px]">
-              <div className="space-y-4">
-                <div className="text-center">
-                  <h3 className="text-xl font-bold">RESIDENTIAL LEASE AGREEMENT</h3>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    This agreement is entered into on {new Date().toLocaleDateString()}
-                  </p>
-                </div>
-                <Separator />
-                <div className="space-y-2 text-sm">
-                  <p><strong>Landlord:</strong> Property Management Company</p>
-                  <p><strong>Tenant:</strong> {selectedApp?.applicantName}</p>
-                  <p><strong>Property:</strong> {propertiesData.find(p => p.id === selectedApp?.propertyId)?.address}</p>
-                  <p><strong>Monthly Rent:</strong> $2,500.00</p>
-                  <p><strong>Lease Term:</strong> 12 months</p>
-                </div>
-                <Separator />
-                <div className="text-xs text-muted-foreground space-y-2">
-                  <p>TERMS AND CONDITIONS</p>
-                  <p>1. The tenant agrees to pay rent on the first day of each month...</p>
-                  <p>2. Security deposit of one month's rent is required...</p>
-                  <p>3. Tenant is responsible for utilities...</p>
-                  <p className="italic">[Additional clauses and terms would appear here]</p>
-                </div>
-                
-                {/* Signature Areas */}
-                <div className="grid grid-cols-2 gap-6 mt-8 pt-6 border-t">
-                  <div className="space-y-2">
-                    <Label>Landlord Signature</Label>
-                    <div className="border-2 border-dashed rounded-lg h-24 flex items-center justify-center bg-background">
-                      <PenTool className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <p className="text-xs text-muted-foreground">Date: {new Date().toLocaleDateString()}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Tenant Signature</Label>
-                    <div className="border-2 border-primary border-dashed rounded-lg h-24 flex items-center justify-center bg-primary/5">
-                      <div className="text-center">
-                        <PenTool className="h-6 w-6 text-primary mx-auto mb-1" />
-                        <p className="text-xs text-muted-foreground">Click to sign</p>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Date: _____________</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowSignatureDialog(false)}>
-                Cancel
-              </Button>
-              <Button variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                Download PDF
-              </Button>
-              <Button>
-                <Mail className="h-4 w-4 mr-2" />
-                Send for Signature
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Application Detail Panel */}
+      <ApplicationDetailPanel 
+        application={selectedApp}
+        open={detailPanelOpen}
+        onOpenChange={setDetailPanelOpen}
+      />
     </div>
   );
 };
