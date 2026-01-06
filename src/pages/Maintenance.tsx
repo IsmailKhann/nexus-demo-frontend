@@ -81,7 +81,7 @@ const Maintenance = () => {
         assignedVendorName: wo.assignedVendorId ? vendors.find(v => v.id === wo.assignedVendorId)?.name : undefined,
         attachments: [],
         notes: [],
-        timeline: [{ id: `evt-${wo.id}`, type: 'created' as const, description: 'Work order created', timestamp: wo.createdAt, userId: 'system', userName: 'System' }],
+        timeline: [{ id: `evt-${wo.id}`, type: 'created' as const, description: 'Work order created', timestamp: wo.createdAt, userId: 'system', userName: 'System', userRole: 'system' as const }],
       }));
       setWorkOrders(extended);
     } catch (error) {

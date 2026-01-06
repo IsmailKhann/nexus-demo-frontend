@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
@@ -19,17 +20,23 @@ import {
   User,
   Building,
   DollarSign,
-  MessageSquare,
   Paperclip,
   Calendar,
   AlertTriangle,
   CheckCircle,
   XCircle,
   Upload,
-  Send,
+  FileText,
+  Activity,
+  MessageCircle,
+  Lock,
+  ListChecks,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import type { ExtendedWorkOrder, Vendor, WorkOrderNote } from '@/types/maintenance';
+import type { ExtendedWorkOrder, Vendor, WorkOrderNote, WorkOrderComment, CommentAttachment } from '@/types/maintenance';
+import { ActivityLog } from './ActivityLog';
+import { InternalNotes } from './InternalNotes';
+import { CommentThread } from './CommentThread';
 
 interface WorkOrderDetailPanelProps {
   workOrder: ExtendedWorkOrder | null;
@@ -37,6 +44,7 @@ interface WorkOrderDetailPanelProps {
   onOpenChange: (open: boolean) => void;
   vendors: Vendor[];
   onUpdateWorkOrder: (workOrder: ExtendedWorkOrder) => void;
+  userRole?: 'admin' | 'vendor' | 'tenant';
 }
 
 const priorityColors = {
@@ -54,21 +62,29 @@ const statusColors = {
   cancelled: 'bg-gray-500',
 };
 
+// Current user simulation
+const CURRENT_USER = 'Sarah Jenkins';
+const CURRENT_USER_ROLE = 'admin' as const;
+
 export function WorkOrderDetailPanel({
   workOrder,
   open,
   onOpenChange,
   vendors,
   onUpdateWorkOrder,
+  userRole = 'admin',
 }: WorkOrderDetailPanelProps) {
   const { toast } = useToast();
-  const [newNote, setNewNote] = useState('');
-  const [isInternalNote, setIsInternalNote] = useState(true);
   const [actualCost, setActualCost] = useState(workOrder?.actualCost?.toString() || '');
+  const [activeTab, setActiveTab] = useState('overview');
 
   if (!workOrder) return null;
 
+  // Initialize comments if not present
+  const comments: WorkOrderComment[] = workOrder.comments || [];
+
   const handleStatusChange = (newStatus: ExtendedWorkOrder['status']) => {
+    const oldStatus = workOrder.status;
     const updatedOrder: ExtendedWorkOrder = {
       ...workOrder,
       status: newStatus,
@@ -78,10 +94,15 @@ export function WorkOrderDetailPanel({
         {
           id: `evt-${Date.now()}`,
           type: 'status_changed',
-          description: `Status changed to ${newStatus.replace('_', ' ')}`,
+          description: `Status changed from ${oldStatus.replace('_', ' ')} to ${newStatus.replace('_', ' ')}`,
           timestamp: new Date().toISOString(),
           userId: 'current-user',
-          userName: 'Sarah Jenkins',
+          userName: CURRENT_USER,
+          userRole: CURRENT_USER_ROLE,
+          metadata: {
+            oldValue: oldStatus.replace('_', ' '),
+            newValue: newStatus.replace('_', ' '),
+          },
         },
       ],
     };
@@ -92,15 +113,14 @@ export function WorkOrderDetailPanel({
     });
   };
 
-  const handleAddNote = () => {
-    if (!newNote.trim()) return;
-
+  const handleAddInternalNote = (content: string) => {
     const note: WorkOrderNote = {
       id: `note-${Date.now()}`,
-      content: newNote,
+      content,
       createdAt: new Date().toISOString(),
-      createdBy: 'Sarah Jenkins',
-      isInternal: isInternalNote,
+      createdBy: CURRENT_USER,
+      createdByRole: CURRENT_USER_ROLE,
+      isInternal: true,
     };
 
     const updatedOrder: ExtendedWorkOrder = {
@@ -110,18 +130,91 @@ export function WorkOrderDetailPanel({
         ...workOrder.timeline,
         {
           id: `evt-${Date.now()}`,
-          type: 'note_added',
-          description: `${isInternalNote ? 'Internal' : 'External'} note added`,
+          type: 'internal_note_added',
+          description: 'Internal note added',
           timestamp: new Date().toISOString(),
           userId: 'current-user',
-          userName: 'Sarah Jenkins',
+          userName: CURRENT_USER,
+          userRole: CURRENT_USER_ROLE,
+          metadata: { isTenantVisible: false },
         },
       ],
     };
 
     onUpdateWorkOrder(updatedOrder);
-    setNewNote('');
-    toast({ title: 'Note Added', description: 'Your note has been added to the work order' });
+    toast({ title: 'Note Added', description: 'Internal note has been added' });
+  };
+
+  const handleEditNote = (noteId: string, content: string) => {
+    const updatedNotes = workOrder.notes.map((n) =>
+      n.id === noteId
+        ? { ...n, content, isEdited: true, editedAt: new Date().toISOString() }
+        : n
+    );
+    const updatedOrder: ExtendedWorkOrder = {
+      ...workOrder,
+      notes: updatedNotes,
+    };
+    onUpdateWorkOrder(updatedOrder);
+    toast({ title: 'Note Updated', description: 'Note has been updated' });
+  };
+
+  const handleDeleteNote = (noteId: string) => {
+    const updatedNotes = workOrder.notes.filter((n) => n.id !== noteId);
+    const updatedOrder: ExtendedWorkOrder = {
+      ...workOrder,
+      notes: updatedNotes,
+    };
+    onUpdateWorkOrder(updatedOrder);
+    toast({ title: 'Note Deleted', description: 'Note has been deleted' });
+  };
+
+  const handleAddComment = (content: string, isTenantVisible: boolean, attachments?: CommentAttachment[]) => {
+    const comment: WorkOrderComment = {
+      id: `comment-${Date.now()}`,
+      content,
+      createdAt: new Date().toISOString(),
+      createdBy: CURRENT_USER,
+      createdByRole: CURRENT_USER_ROLE,
+      isTenantVisible,
+      attachments,
+    };
+
+    const updatedOrder = {
+      ...workOrder,
+      comments: [...comments, comment],
+      timeline: [
+        ...workOrder.timeline,
+        {
+          id: `evt-${Date.now()}`,
+          type: 'comment_added' as const,
+          description: `Comment added${isTenantVisible ? ' (visible to tenant)' : ''}`,
+          timestamp: new Date().toISOString(),
+          userId: 'current-user',
+          userName: CURRENT_USER,
+          userRole: CURRENT_USER_ROLE,
+          metadata: { isTenantVisible },
+        },
+      ],
+    };
+
+    onUpdateWorkOrder(updatedOrder as ExtendedWorkOrder);
+    toast({ title: 'Comment Added', description: 'Your comment has been posted' });
+  };
+
+  const handleToggleCommentVisibility = (commentId: string, isTenantVisible: boolean) => {
+    const updatedComments = comments.map((c) =>
+      c.id === commentId ? { ...c, isTenantVisible } : c
+    );
+    const updatedOrder = {
+      ...workOrder,
+      comments: updatedComments,
+    };
+    onUpdateWorkOrder(updatedOrder as ExtendedWorkOrder);
+    toast({
+      title: 'Visibility Updated',
+      description: isTenantVisible ? 'Comment is now visible to tenant' : 'Comment is now internal only',
+    });
   };
 
   const handleUpdateCost = () => {
@@ -139,6 +232,7 @@ export function WorkOrderDetailPanel({
 
   const handleVendorChange = (vendorId: string) => {
     const vendor = vendors.find((v) => v.id === vendorId);
+    const isReassign = !!workOrder.assignedVendorId;
     const updatedOrder: ExtendedWorkOrder = {
       ...workOrder,
       assignedVendorId: vendorId,
@@ -149,16 +243,22 @@ export function WorkOrderDetailPanel({
         ...workOrder.timeline,
         {
           id: `evt-${Date.now()}`,
-          type: 'assigned',
-          description: `Assigned to ${vendor?.name}`,
+          type: isReassign ? 'reassigned' : 'assigned',
+          description: isReassign
+            ? `Reassigned from ${workOrder.assignedVendorName} to ${vendor?.name}`
+            : `Assigned to ${vendor?.name}`,
           timestamp: new Date().toISOString(),
           userId: 'current-user',
-          userName: 'Sarah Jenkins',
+          userName: CURRENT_USER,
+          userRole: CURRENT_USER_ROLE,
+          metadata: isReassign
+            ? { oldValue: workOrder.assignedVendorName, newValue: vendor?.name }
+            : undefined,
         },
       ],
     };
     onUpdateWorkOrder(updatedOrder);
-    toast({ title: 'Vendor Assigned', description: `Work order assigned to ${vendor?.name}` });
+    toast({ title: isReassign ? 'Vendor Reassigned' : 'Vendor Assigned', description: `Work order assigned to ${vendor?.name}` });
   };
 
   const formatDate = (dateStr: string) => {
@@ -204,15 +304,24 @@ export function WorkOrderDetailPanel({
           </div>
         </SheetHeader>
 
-        <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="notes">Notes</TabsTrigger>
-            <TabsTrigger value="attachments">Attachments</TabsTrigger>
-            <TabsTrigger value="timeline">Timeline</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-4">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm">
+              <ListChecks className="h-4 w-4 mr-1 hidden sm:inline" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="tasks" className="text-xs sm:text-sm">
+              <FileText className="h-4 w-4 mr-1 hidden sm:inline" />
+              Tasks
+            </TabsTrigger>
+            <TabsTrigger value="communication" className="text-xs sm:text-sm">
+              <MessageCircle className="h-4 w-4 mr-1 hidden sm:inline" />
+              Communication
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="details" className="space-y-4 mt-4">
+          {/* OVERVIEW TAB */}
+          <TabsContent value="overview" className="space-y-4 mt-4">
             {/* SLA Alert */}
             {slaStatus && workOrder.status !== 'completed' && (
               <Card className={slaStatus.status === 'overdue' ? 'border-red-500' : ''}>
@@ -235,7 +344,7 @@ export function WorkOrderDetailPanel({
               </CardContent>
             </Card>
 
-            {/* Location & Assignment Info */}
+            {/* Location & Assignment */}
             <div className="grid grid-cols-2 gap-4">
               <Card>
                 <CardHeader className="pb-2">
@@ -257,24 +366,25 @@ export function WorkOrderDetailPanel({
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Select
-                    value={workOrder.assignedVendorId || ''}
-                    onValueChange={handleVendorChange}
-                  >
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue placeholder="Assign vendor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vendors.map((vendor) => (
-                        <SelectItem key={vendor.id} value={vendor.id}>
-                          {vendor.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {workOrder.assignedVendorName && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Currently: {workOrder.assignedVendorName}
+                  {userRole === 'admin' ? (
+                    <Select
+                      value={workOrder.assignedVendorId || ''}
+                      onValueChange={handleVendorChange}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Assign vendor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vendors.map((vendor) => (
+                          <SelectItem key={vendor.id} value={vendor.id}>
+                            {vendor.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-sm font-medium">
+                      {workOrder.assignedVendorName || 'Unassigned'}
                     </p>
                   )}
                 </CardContent>
@@ -295,57 +405,61 @@ export function WorkOrderDetailPanel({
                     ${workOrder.estimatedCost?.toFixed(2) || '0.00'}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Actual Cost:</span>
-                  <Input
-                    type="number"
-                    value={actualCost}
-                    onChange={(e) => setActualCost(e.target.value)}
-                    placeholder="0.00"
-                    className="h-8 w-24"
-                  />
-                  <Button size="sm" variant="outline" onClick={handleUpdateCost}>
-                    Update
-                  </Button>
-                </div>
+                {userRole === 'admin' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Actual Cost:</span>
+                    <Input
+                      type="number"
+                      value={actualCost}
+                      onChange={(e) => setActualCost(e.target.value)}
+                      placeholder="0.00"
+                      className="h-8 w-24"
+                    />
+                    <Button size="sm" variant="outline" onClick={handleUpdateCost}>
+                      Update
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             {/* Status Actions */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                {workOrder.status !== 'in_progress' && workOrder.status !== 'completed' && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleStatusChange('in_progress')}
-                  >
-                    <Clock className="h-4 w-4 mr-1" /> Start Work
-                  </Button>
-                )}
-                {workOrder.status === 'in_progress' && (
-                  <Button
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700"
-                    onClick={() => handleStatusChange('completed')}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-1" /> Complete
-                  </Button>
-                )}
-                {workOrder.status !== 'cancelled' && workOrder.status !== 'completed' && (
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => handleStatusChange('cancelled')}
-                  >
-                    <XCircle className="h-4 w-4 mr-1" /> Cancel
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
+            {userRole === 'admin' && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-wrap gap-2">
+                  {workOrder.status !== 'in_progress' && workOrder.status !== 'completed' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleStatusChange('in_progress')}
+                    >
+                      <Clock className="h-4 w-4 mr-1" /> Start Work
+                    </Button>
+                  )}
+                  {workOrder.status === 'in_progress' && (
+                    <Button
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700"
+                      onClick={() => handleStatusChange('completed')}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" /> Complete
+                    </Button>
+                  )}
+                  {workOrder.status !== 'cancelled' && workOrder.status !== 'completed' && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleStatusChange('cancelled')}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" /> Cancel
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Dates */}
             <Card>
@@ -373,77 +487,13 @@ export function WorkOrderDetailPanel({
             </Card>
           </TabsContent>
 
-          <TabsContent value="notes" className="space-y-4 mt-4">
-            {/* Add Note */}
+          {/* TASKS TAB */}
+          <TabsContent value="tasks" className="space-y-4 mt-4">
+            {/* Attachments */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4" /> Add Note
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Textarea
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                  placeholder="Add a note..."
-                  rows={3}
-                />
-                <div className="flex items-center justify-between">
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant={isInternalNote ? 'default' : 'outline'}
-                      onClick={() => setIsInternalNote(true)}
-                    >
-                      Internal
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={!isInternalNote ? 'default' : 'outline'}
-                      onClick={() => setIsInternalNote(false)}
-                    >
-                      External
-                    </Button>
-                  </div>
-                  <Button size="sm" onClick={handleAddNote}>
-                    <Send className="h-4 w-4 mr-1" /> Add Note
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Notes List */}
-            <div className="space-y-3">
-              {workOrder.notes.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">No notes yet</p>
-              ) : (
-                workOrder.notes.map((note) => (
-                  <Card key={note.id}>
-                    <CardContent className="py-3">
-                      <div className="flex items-start justify-between mb-2">
-                        <span className="text-sm font-medium">{note.createdBy}</span>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={note.isInternal ? 'secondary' : 'outline'} className="text-xs">
-                            {note.isInternal ? 'Internal' : 'External'}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(note.createdAt)}
-                          </span>
-                        </div>
-                      </div>
-                      <p className="text-sm">{note.content}</p>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="attachments" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Paperclip className="h-4 w-4" /> Upload Attachments
+                  <Paperclip className="h-4 w-4" /> Attachments
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -488,28 +538,57 @@ export function WorkOrderDetailPanel({
             )}
           </TabsContent>
 
-          <TabsContent value="timeline" className="mt-4">
-            <div className="relative">
-              <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
-              <div className="space-y-4">
-                {workOrder.timeline.map((event, index) => (
-                  <div key={event.id} className="relative pl-10">
-                    <div className="absolute left-2.5 w-3 h-3 rounded-full bg-primary border-2 border-background" />
-                    <Card>
-                      <CardContent className="py-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium">{event.description}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(event.timestamp)}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">by {event.userName}</p>
-                      </CardContent>
-                    </Card>
+          {/* COMMUNICATION & AUDIT TRAIL TAB */}
+          <TabsContent value="communication" className="space-y-6 mt-4">
+            {/* Sub-tabs for Activity Log, Internal Notes, Comments */}
+            <Tabs defaultValue="activity" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="activity" className="text-xs">
+                  <Activity className="h-3 w-3 mr-1" />
+                  Activity Log
+                </TabsTrigger>
+                <TabsTrigger value="internal" className="text-xs">
+                  <Lock className="h-3 w-3 mr-1" />
+                  Internal Notes
+                </TabsTrigger>
+                <TabsTrigger value="comments" className="text-xs">
+                  <MessageCircle className="h-3 w-3 mr-1" />
+                  Comments
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="activity" className="mt-4">
+                <ActivityLog events={workOrder.timeline} />
+              </TabsContent>
+
+              <TabsContent value="internal" className="mt-4">
+                {userRole === 'admin' ? (
+                  <InternalNotes
+                    notes={workOrder.notes}
+                    currentUser={CURRENT_USER}
+                    currentUserRole={CURRENT_USER_ROLE}
+                    onAddNote={handleAddInternalNote}
+                    onEditNote={handleEditNote}
+                    onDeleteNote={handleDeleteNote}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Lock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Internal notes are not visible to your role</p>
                   </div>
-                ))}
-              </div>
-            </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="comments" className="mt-4">
+                <CommentThread
+                  comments={comments}
+                  currentUser={CURRENT_USER}
+                  currentUserRole={userRole === 'admin' ? CURRENT_USER_ROLE : userRole}
+                  onAddComment={handleAddComment}
+                  onToggleVisibility={userRole === 'admin' ? handleToggleCommentVisibility : undefined}
+                />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
         </Tabs>
       </SheetContent>

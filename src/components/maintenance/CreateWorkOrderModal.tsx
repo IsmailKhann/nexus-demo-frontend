@@ -150,6 +150,7 @@ export function CreateWorkOrderModal({
           timestamp: new Date().toISOString(),
           userId: 'current-user',
           userName: 'Sarah Jenkins',
+          userRole: 'admin' as const,
         },
       ],
     };
