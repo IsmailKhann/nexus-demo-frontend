@@ -53,6 +53,7 @@ export interface ExtendedWorkOrder {
   attachments: Attachment[];
   notes: WorkOrderNote[];
   timeline: WorkOrderEvent[];
+  comments?: WorkOrderComment[];
 }
 
 export interface Attachment {
@@ -69,16 +70,58 @@ export interface WorkOrderNote {
   content: string;
   createdAt: string;
   createdBy: string;
+  createdByRole: 'admin' | 'vendor' | 'tenant' | 'system';
   isInternal: boolean;
+  isEdited?: boolean;
+  editedAt?: string;
 }
+
+export interface WorkOrderComment {
+  id: string;
+  content: string;
+  createdAt: string;
+  createdBy: string;
+  createdByRole: 'admin' | 'vendor' | 'tenant' | 'system';
+  isTenantVisible: boolean;
+  attachments?: CommentAttachment[];
+}
+
+export interface CommentAttachment {
+  id: string;
+  name: string;
+  type: 'image' | 'document';
+  url: string;
+}
+
+export type ActivityEventType = 
+  | 'created' 
+  | 'assigned' 
+  | 'reassigned'
+  | 'status_changed' 
+  | 'priority_changed'
+  | 'sla_updated'
+  | 'note_added' 
+  | 'internal_note_added'
+  | 'comment_added'
+  | 'attachment_added' 
+  | 'completed'
+  | 'escalated'
+  | 'reminder_sent';
 
 export interface WorkOrderEvent {
   id: string;
-  type: 'created' | 'assigned' | 'status_changed' | 'note_added' | 'attachment_added' | 'completed';
+  type: ActivityEventType;
   description: string;
   timestamp: string;
   userId: string;
   userName: string;
+  userRole: 'admin' | 'vendor' | 'tenant' | 'system';
+  metadata?: {
+    oldValue?: string;
+    newValue?: string;
+    attachmentName?: string;
+    isTenantVisible?: boolean;
+  };
 }
 
 export interface InternalTeam {
