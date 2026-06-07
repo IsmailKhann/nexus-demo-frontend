@@ -47,7 +47,7 @@ import DevelopmentProjectView, { DevelopmentProject } from '@/components/propert
 import { HardHat } from 'lucide-react';
 
 // =============== PROPERTY DATA (extended with ownership) ===============
-export const initialProperties: Property[] = [
+export const initialProperties = [
   {
     id: "PROP_001",
     name: "Sunset Towers",
