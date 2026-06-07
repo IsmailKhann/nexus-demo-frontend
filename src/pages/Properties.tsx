@@ -221,6 +221,7 @@ const Properties = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [cityFilter, setCityFilter] = useState<string>('all');
   const [vacancyFilter, setVacancyFilter] = useState<string>('all');
+  const [lifecycleFilter, setLifecycleFilter] = useState<'all' | 'operating' | 'under_construction'>('all');
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
