@@ -217,7 +217,7 @@ export interface Property {
 }
 
 const Properties = () => {
-  const [properties, setProperties] = useState<Property[]>(initialProperties);
+  const [properties, setProperties] = useState<Property[]>(initialProperties as Property[]);
   const [searchQuery, setSearchQuery] = useState('');
   const [cityFilter, setCityFilter] = useState<string>('all');
   const [vacancyFilter, setVacancyFilter] = useState<string>('all');
