@@ -3,10 +3,10 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import {
-  Landmark, Coins, Banknote, FileText, Building2, ClipboardCheck,
+  Landmark, Coins, Banknote, FileText, ClipboardCheck,
   TrendingUp, BarChart3, Users, Award, KeyRound, Repeat, Wallet,
-  HardHat, Receipt, Truck, Wrench, FolderOpen, ConstructionIcon,
-  Construction, Plus, Hammer
+  Receipt, Truck, FolderOpen,
+  Construction, Plus
 } from 'lucide-react';
 
 export interface DevelopmentProject {
