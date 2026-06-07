@@ -482,10 +482,14 @@ const Properties = () => {
                 alt={property.name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
-              <div className="absolute top-3 right-3">
-                <Badge className={`${property.vacant_count > 0 ? 'bg-status-leased' : 'bg-muted'} text-white`}>
-                  {property.vacant_count} vacant
-                </Badge>
+              <div className="absolute top-3 right-3 flex flex-col gap-1 items-end">
+                {property.lifecycle_stage === 'under_construction' ? (
+                  <Badge className="bg-amber-500 text-white gap-1"><HardHat className="h-3 w-3" /> Under Construction</Badge>
+                ) : (
+                  <Badge className={`${property.vacant_count > 0 ? 'bg-status-leased' : 'bg-muted'} text-white`}>
+                    {property.vacant_count} vacant
+                  </Badge>
+                )}
               </div>
               <div className="absolute top-3 left-3">
                 <Badge variant="secondary" className="bg-background/80 text-foreground text-xs">
