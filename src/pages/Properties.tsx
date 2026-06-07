@@ -121,6 +121,79 @@ export const initialProperties = [
     timezone: "EST",
     created_at: "2024-03-01",
     owner_id: "OWNER_004"
+  },
+  {
+    id: "PROP_006",
+    name: "88 Hwy 139",
+    address_line1: "88 Highway 139",
+    city: "Atlanta",
+    state: "GA",
+    postal_code: "30303",
+    images: [
+      "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=800",
+      "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=800"
+    ],
+    description: "Ground-up mixed-use development. 48 residential units over 8,000 sqft retail. Currently in construction phase, targeting CO Q3 2026.",
+    units_count: 48,
+    vacant_count: 48,
+    avg_rent: 0,
+    timezone: "EST",
+    created_at: "2025-04-01",
+    owner_id: "OWNER_001",
+    lifecycle_stage: "under_construction",
+    development: {
+      entity_llc: "Regina Maid LLC",
+      phase: "Construction",
+      current_stage_index: 6,
+      start_date: "2025-05-15",
+      target_co_date: "2026-09-30",
+      total_budget: 18500000,
+      total_committed: 14200000,
+      total_actual: 11900000,
+      total_paid: 9650000,
+      equity_raised: 6500000,
+      loan_amount: 13000000,
+      loan_drawn: 7400000,
+      general_contractor: "Apex Construction Group",
+      architect: "Studio Vertex",
+      lender: "First National Bank"
+    }
+  },
+  {
+    id: "PROP_007",
+    name: "Lakeside Residences",
+    address_line1: "200 Lake View Pkwy",
+    city: "Nashville",
+    state: "TN",
+    postal_code: "37201",
+    images: [
+      "https://images.unsplash.com/photo-1487958449943-2429e8be8625?w=800"
+    ],
+    description: "32-unit boutique condo project in preconstruction. Equity raise active, construction loan in underwriting.",
+    units_count: 32,
+    vacant_count: 32,
+    avg_rent: 0,
+    timezone: "CST",
+    created_at: "2025-09-10",
+    owner_id: "OWNER_002",
+    lifecycle_stage: "under_construction",
+    development: {
+      entity_llc: "Lakeside Holdings LLC",
+      phase: "Preconstruction",
+      current_stage_index: 1,
+      start_date: "2025-09-01",
+      target_co_date: "2027-06-30",
+      total_budget: 9800000,
+      total_committed: 850000,
+      total_actual: 620000,
+      total_paid: 540000,
+      equity_raised: 2100000,
+      loan_amount: 0,
+      loan_drawn: 0,
+      general_contractor: "TBD",
+      architect: "Harbor Design Co.",
+      lender: "TBD"
+    }
   }
 ];
 
@@ -139,6 +212,8 @@ export interface Property {
   timezone: string;
   created_at: string;
   owner_id?: string;
+  lifecycle_stage?: 'operating' | 'under_construction';
+  development?: DevelopmentProject;
 }
 
 const Properties = () => {
