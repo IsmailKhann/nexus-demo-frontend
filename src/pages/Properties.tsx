@@ -454,6 +454,16 @@ const Properties = () => {
                 <SelectItem value="full">Fully Occupied</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={lifecycleFilter} onValueChange={(v) => setLifecycleFilter(v as any)}>
+              <SelectTrigger className="w-[180px] bg-muted border-border">
+                <SelectValue placeholder="Lifecycle" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border">
+                <SelectItem value="all">All Lifecycle</SelectItem>
+                <SelectItem value="operating">Operating</SelectItem>
+                <SelectItem value="under_construction">Under Construction</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
