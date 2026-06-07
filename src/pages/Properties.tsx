@@ -43,6 +43,8 @@ import {
 } from '@/data/unitsData';
 import AddTenantModal from '@/components/properties/AddTenantModal';
 import UnitDetailPanel from '@/components/properties/UnitDetailPanel';
+import DevelopmentProjectView, { DevelopmentProject } from '@/components/properties/DevelopmentProjectView';
+import { HardHat } from 'lucide-react';
 
 // =============== PROPERTY DATA (extended with ownership) ===============
 export const initialProperties = [
