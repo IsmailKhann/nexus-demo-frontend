@@ -1071,6 +1071,7 @@ const Properties = () => {
                     </div>
                   </TabsContent>
                 </Tabs>
+                )}
               </div>
             </>
           )}
