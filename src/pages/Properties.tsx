@@ -598,6 +598,17 @@ const Properties = () => {
                   )}
                 </div>
 
+                {selectedProperty.lifecycle_stage === 'under_construction' ? (
+                  <DevelopmentProjectView
+                    project={selectedProperty.development ?? {}}
+                    propertyName={selectedProperty.name}
+                    onConvertToOperating={() => {
+                      setProperties(prev => prev.map(p => p.id === selectedProperty.id ? { ...p, lifecycle_stage: 'operating' } : p));
+                      setSelectedProperty({ ...selectedProperty, lifecycle_stage: 'operating' });
+                      toast({ title: 'Converted to Operating', description: `${selectedProperty.name} is now in lease-up.` });
+                    }}
+                  />
+                ) : (
                 <Tabs defaultValue="overview" className="w-full">
                   <TabsList className="grid w-full grid-cols-5 bg-muted">
                     <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs">Overview</TabsTrigger>
