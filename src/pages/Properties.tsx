@@ -250,9 +250,11 @@ const Properties = () => {
       const matchesVacancy = vacancyFilter === 'all' || 
         (vacancyFilter === 'vacant' && prop.vacant_count > 0) ||
         (vacancyFilter === 'full' && prop.vacant_count === 0);
-      return matchesSearch && matchesCity && matchesVacancy;
+      const stage = prop.lifecycle_stage ?? 'operating';
+      const matchesLifecycle = lifecycleFilter === 'all' || stage === lifecycleFilter;
+      return matchesSearch && matchesCity && matchesVacancy && matchesLifecycle;
     });
-  }, [properties, searchQuery, cityFilter, vacancyFilter]);
+  }, [properties, searchQuery, cityFilter, vacancyFilter, lifecycleFilter]);
 
   // Stats
   const stats = useMemo(() => ({
